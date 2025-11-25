@@ -128,7 +128,9 @@ client.on('messageCreate', async message => {
       console.error('Error in RougePulseAgent command:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
 
-      let userMessage = `❌ **Erreur RougePulseAgent** : ${errorMessage}`;
+      // Truncate error message to avoid Discord 2000 character limit
+      const truncatedError = errorMessage.length > 500 ? errorMessage.substring(0, 497) + '...' : errorMessage;
+      let userMessage = `❌ **Erreur RougePulseAgent** : ${truncatedError}`;
 
       if (errorMessage.includes('Timeout')) {
         userMessage = '⏰ **Timeout RougePulseAgent** : L\'analyse prend trop de temps. Réessayez plus tard.';
@@ -198,7 +200,9 @@ client.on('messageCreate', async message => {
     } catch (error) {
       console.error('Error in Vortex500 command:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      await loadingMsg.edit(`❌ Erreur Vortex500 : ${errorMessage}`);
+      // Truncate error message to avoid Discord 2000 character limit
+      const truncatedError = errorMessage.length > 500 ? errorMessage.substring(0, 497) + '...' : errorMessage;
+      await loadingMsg.edit(`❌ Erreur Vortex500 : ${truncatedError}`);
     }
   }
 

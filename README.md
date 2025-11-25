@@ -67,7 +67,7 @@ pnpm analyze
 - **⚡ Real-Time Processing** - 3-5 second analysis time with cached data
 - **📈 ES Futures Focus** - Optimized for S&P 500 futures sentiment analysis
 - **📉 VIX Volatility Analysis** - Real-time VIX scraping & verification (Investing.com/MarketWatch)
-- **🤖 Discord Bot** - 24/7 Market Assistant with commands (!sentiment, !vix) and daily briefings
+- **🤖 Discord Bot** - 24/7 Market Assistant with commands (!sentiment, !vix, !rougepulse, !vortex500, !newsagg, !tescraper, !vixscraper) and daily briefings
 
 ### 🎛️ **Operating Modes**
 
@@ -124,12 +124,12 @@ pnpm analyze
 The primary entry point with multiple operating modes:
 
 ```bash
-# Single sentiment analysis
-pnpm analyze
+# Single sentiment analysis (via Vortex500Agent)
+pnpm vortex500
 # or
-ts-node run.ts --analyze
+ts-node -e "import { Vortex500Agent } from './src/backend/agents/Vortex500Agent'; const agent = new Vortex500Agent(); agent.analyzeMarketSentiment().then(console.log);"
 
-# Continuous monitoring (5-min intervals)
+# Continuous monitoring (12-hour intervals)
 pnpm continuous
 # or
 ts-node run.ts --continuous
@@ -138,6 +138,11 @@ ts-node run.ts --continuous
 pnpm status
 # or
 ts-node run.ts --status
+
+# Refresh news data
+pnpm refresh
+# or
+ts-node run.ts --refresh
 
 # Run VIX scraper (All sources)
 pnpm vix:scrape
@@ -161,7 +166,7 @@ ts-node run.ts --vix-analyze
 
 # Start Discord Bot
 pnpm bot
-# Commands: !sentiment, !vix
+# Commands: !sentiment, !vix, !rougepulse, !vortex500, !newsagg, !tescraper, !vixscraper
 ```
 
 ### Package.json Scripts
@@ -172,8 +177,19 @@ pnpm bot
     "analyze": "ts-node run.ts --analyze",
     "continuous": "ts-node run.ts --continuous",
     "status": "ts-node run.ts --status",
-    "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' run.ts --analyze",
-    "db:init": "ts-node create_database.ts"
+    "refresh": "ts-node run.ts --refresh",
+    "vix:scrape": "ts-node run.ts --vix-scrape",
+    "vix:analyze": "ts-node run.ts --vix-analyze",
+    "scrape:mw": "ts-node run.ts --scrape-mw",
+    "scrape:inv": "ts-node run.ts --scrape-inv",
+    "bot": "ts-node src/discord_bot/index.ts",
+    "vortex500": "ts-node -e \"import { Vortex500Agent } from './src/backend/agents/Vortex500Agent'; const agent = new Vortex500Agent(); agent.analyzeMarketSentiment().then(console.log);\"",
+    "rouge:pulse": "ts-node src/backend/scripts/run_rouge_pulse.ts",
+    "scrape:te": "ts-node src/backend/scripts/scrape_trading_economics.ts",
+    "pipeline": "ts-node src/backend/scripts/run_news_data_pipeline.ts",
+    "sentiment": "ts-node src/backend/scripts/run_agent_sentiment.ts",
+    "db:analyze": "ts-node src/backend/scripts/database_analysis.ts",
+    "test:scrapers": "ts-node src/backend/scripts/test_scrapers.ts"
   }
 }
 ```
@@ -224,10 +240,10 @@ pnpm bot
 
 ## 🏗 Architecture
 
-### 🤖 SentimentAgentFinal (Core Agent)
+### 🤖 Vortex500Agent (Core Sentiment Agent)
 
 ```
-SentimentAgentFinal
+Vortex500Agent
 ├── Database-Only Mode
 │   ├── Extracts news from PostgreSQL (48h window)
 │   ├── Uses TOON format for KiloCode processing
@@ -290,6 +306,29 @@ SentimentAgentFinal
 ├── articles_saved INTEGER          -- Articles sauvegardés
 ├── success BOOLEAN                 -- Succès de la session
 ├── error_message TEXT              -- Message d'erreur
+└── created_at TIMESTAMP
+
+-- 🔴 rouge_pulse_analyses (Analyses calendrier économique)
+├── id UUID PRIMARY KEY
+├── impact_score INTEGER            -- Score d'impact 0-100
+├── market_narrative TEXT           -- Narratif de marché
+├── high_impact_events JSONB        -- Événements à fort impact
+├── asset_analysis JSONB            -- Analyse par actif
+├── trading_recommendation TEXT     -- Recommandation de trading
+├── raw_analysis JSONB              -- Analyse brute
+└── created_at TIMESTAMP
+
+-- 📅 economic_events (Calendrier économique)
+├── id UUID PRIMARY KEY
+├── event_date TIMESTAMP            -- Date de l'événement
+├── country VARCHAR(100)            -- Pays
+├── event_name VARCHAR(500)         -- Nom de l'événement
+├── importance INTEGER              -- Importance 1-3
+├── actual VARCHAR(50)              -- Valeur actuelle
+├── forecast VARCHAR(50)            -- Prévision
+├── previous VARCHAR(50)            -- Valeur précédente
+├── currency VARCHAR(20)            -- Devise
+├── source VARCHAR(50)              -- Source (TradingEconomics)
 └── created_at TIMESTAMP
 
 -- Tables additionnelles (optimisation)
@@ -372,9 +411,9 @@ Database Storage + Display
 ### Core Files
 
 - **`run.ts`** - Main application entry point with CLI interface
-- **`SentimentAgentFinal.ts`** - Robust sentiment analysis agent
+- **`Vortex500Agent.ts`** - Robust sentiment analysis agent
 - **`NewsDatabaseService.ts`** - Database operations and caching
-- **`schema_simplified.sql`** - PostgreSQL schema definition
+- **`schema.sql`** - PostgreSQL schema definition
 
 ### Configuration
 
@@ -387,6 +426,11 @@ Database Storage + Display
 - **`test_final_sentiment.ts`** - Agent functionality testing
 - **`test_database_connection.ts`** - Database connectivity tests
 - **`fix_database.ts`** - Database repair utilities
+- **`test_scrapers.ts`** - Scraper functionality testing
+- **`test_newsagg.ts`** - News aggregator testing
+- **`test_vixombre_expert.ts`** - VIX agent expert testing
+- **`test_vixombre.ts`** - VIX agent testing
+- **`test_discord_token.ts`** - Discord bot token testing
 
 ---
 
