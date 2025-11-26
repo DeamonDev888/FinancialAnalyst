@@ -65,7 +65,7 @@ class NewsDatabaseService {
             this.pool = new pg_1.Pool(connectionString ? { connectionString } : defaultConfig);
             // L'initialisation sera faite lors de la première utilisation
         }
-        catch (error) {
+        catch {
             console.log('⚠️ Database initialization failed - running in memory-only mode');
             this.pool = null;
         }
@@ -188,12 +188,12 @@ class NewsDatabaseService {
         }
         try {
             const client = await this.pool.connect();
-            const result = await client.query('SELECT NOW()');
+            await client.query('SELECT NOW()');
             client.release();
             console.log('✅ Database connection successful');
             return true;
         }
-        catch (error) {
+        catch {
             console.log('⚠️ Database connection failed - using memory-only mode');
             return false;
         }
@@ -349,8 +349,8 @@ class NewsDatabaseService {
             client.release();
             return result.rows[0].id;
         }
-        catch (error) {
-            console.error('❌ Failed to save sentiment analysis - Error:', error instanceof Error ? error.message : error);
+        catch {
+            console.error('❌ Failed to save sentiment analysis');
             console.error('   Analysis data:', JSON.stringify(analysis, null, 2));
             return '';
         }
@@ -391,7 +391,7 @@ class NewsDatabaseService {
             `);
             return parseInt(result.rows[0].count) > 0;
         }
-        catch (error) {
+        catch {
             console.log('⚠️ Cache freshness check failed - using memory-only mode');
             return false;
         }
@@ -432,7 +432,7 @@ class NewsDatabaseService {
                 client.release();
             }
         }
-        catch (error) {
+        catch {
             console.log('⚠️ Failed to update source status - continuing without database');
         }
     }

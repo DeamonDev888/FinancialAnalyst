@@ -24,9 +24,13 @@ async function testSP500() {
     const indicesData = await finnhubClient.fetchMultipleIndices(alternativeIndices);
     if (indicesData.length > 0) {
         indicesData.forEach((index) => {
-            const indexName = index.symbol === '^GSPC' ? 'S&P 500' :
-                index.symbol === '^DJI' ? 'Dow Jones' :
-                    index.symbol === '^IXIC' ? 'NASDAQ' : index.symbol;
+            const indexName = index.symbol === '^GSPC'
+                ? 'S&P 500'
+                : index.symbol === '^DJI'
+                    ? 'Dow Jones'
+                    : index.symbol === '^IXIC'
+                        ? 'NASDAQ'
+                        : index.symbol;
             console.log(`✅ ${indexName} (${index.symbol}): ${index.current} (${index.change > 0 ? '+' : ''}${index.percent_change}%)`);
         });
     }

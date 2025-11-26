@@ -231,17 +231,10 @@ class UnifiedMarketDataCollector extends EventEmitter {
       console.log(`⏰ ${new Date().toLocaleTimeString()} - Collecte des données`);
 
       // Collecter et stocker les données crypto
-      const _cryptoData = this.collectCryptoData();
-      if (_cryptoData.length > 0) {
-        console.log(`🪙 ${_cryptoData.length} actifs crypto trouvés`);
-        for (const data of _cryptoData) {
-          await this.storeMarketData(data);
-        }
-      } else {
-        console.log(
-          'ℹ️ Aucune donnée Crypto disponible (fichiers manquants ou lecteur non implémenté)'
-        );
-      }
+      this.collectCryptoData();
+      console.log(
+        'ℹ️ Aucune donnée Crypto disponible (fichiers manquants ou lecteur non implémenté)'
+      );
 
       // Collecter et stocker les données VIX
       const vixData = this.collectVIXData();

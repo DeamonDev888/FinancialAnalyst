@@ -15,9 +15,8 @@ async function getVIXSimple() {
     const client = new get_vix_data_1.SierraChartVIXClient(config);
     return new Promise((resolve, reject) => {
         let vixDataReceived = false;
-        let timeout;
         // Configuration du timeout après 30 secondes
-        timeout = setTimeout(() => {
+        const timeout = setTimeout(() => {
             if (!vixDataReceived) {
                 client.disconnect();
                 reject(new Error('Timeout: Aucune donnée VIX reçue après 30 secondes'));

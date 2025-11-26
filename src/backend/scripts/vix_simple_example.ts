@@ -14,10 +14,8 @@ async function getVIXSimple() {
 
   return new Promise((resolve, reject) => {
     let vixDataReceived = false;
-    let timeout: NodeJS.Timeout;
-
     // Configuration du timeout après 30 secondes
-    timeout = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       if (!vixDataReceived) {
         client.disconnect();
         reject(new Error('Timeout: Aucune donnée VIX reçue après 30 secondes'));
@@ -27,7 +25,7 @@ async function getVIXSimple() {
     client.on('vixData', (data: VIXData) => {
       if (!vixDataReceived) {
         vixDataReceived = true;
-        clearTimeout(timeout);
+        clearTimeout(timeoutId);
 
         console.log('✅ Données VIX reçues avec succès:');
         console.log(`Prix actuel: ${data.lastPrice}`);
@@ -42,20 +40,20 @@ async function getVIXSimple() {
     });
 
     client.on('error', (error: Error) => {
-      clearTimeout(timeout);
+      clearTimeout(timeoutId);
       client.disconnect();
       reject(error);
     });
 
     client.on('authenticationError', (error: string) => {
-      clearTimeout(timeout);
+      clearTimeout(timeoutId);
       client.disconnect();
       reject(new Error(`Erreur d'authentification: ${error}`));
     });
 
     // Démarrer la connexion
     client.connect().catch(error => {
-      clearTimeout(timeout);
+      clearTimeout(timeoutId);
       reject(error);
     });
   });

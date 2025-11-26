@@ -56,7 +56,7 @@ class TradingEconomicsScraper {
             try {
                 fs.appendFileSync('scraper_debug.log', msg + '\n');
             }
-            catch (_e) {
+            catch {
                 // Ignore file write errors
             }
         };

@@ -1,5 +1,4 @@
 import { NewsDataProcessor, DailyNewsSummary, ProcessedNewsData } from './NewsDataProcessor';
-import { NewsItem } from '../ingestion/NewsAggregator';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 

@@ -38,7 +38,7 @@ const dotenv = __importStar(require("dotenv"));
 const pg_1 = require("pg");
 const cron = __importStar(require("node-cron"));
 const path = __importStar(require("path"));
-const RougePulseAgent_1 = require("../backend/agents/RougePulseAgent");
+const RougePulseAgentSimple_1 = require("../backend/agents/RougePulseAgentSimple");
 const VixombreAgent_1 = require("../backend/agents/VixombreAgent");
 const Vortex500Agent_1 = require("../backend/agents/Vortex500Agent");
 const NewsAggregator_1 = require("../backend/ingestion/NewsAggregator");
@@ -114,7 +114,22 @@ client.on('messageCreate', async (message) => {
         const rougePulse = await getLatestRougePulse();
         if (rougePulse) {
             console.log('✅ RougePulse found, replying...');
-            await message.reply(formatRougePulseMessage(rougePulse));
+            const formattedMessages = formatRougePulseMessage(rougePulse);
+            if (formattedMessages.length === 1) {
+                await message.reply(formattedMessages[0]);
+            }
+            else {
+                // Envoyer le premier message, puis le second après un délai
+                await message.reply(formattedMessages[0]);
+                setTimeout(async () => {
+                    try {
+                        await message.channel.send(formattedMessages[1]);
+                    }
+                    catch (error) {
+                        console.error('Error sending second message:', error);
+                    }
+                }, 500);
+            }
         }
         else {
             console.log('❌ No RougePulse found in DB.');
@@ -125,7 +140,7 @@ client.on('messageCreate', async (message) => {
         console.log('🔴 Processing !rougepulseagent command...');
         const loadingMsg = await message.reply('🔴 **RougePulseAgent** analyse le calendrier économique... ⏳');
         try {
-            const agent = new RougePulseAgent_1.RougePulseAgent();
+            const agent = new RougePulseAgentSimple_1.RougePulseAgentSimple();
             // Add a 95s timeout (slightly longer than agent's 90s timeout)
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: L'analyse prend trop de temps.")), 95000));
             const result = (await Promise.race([agent.analyzeEconomicEvents(), timeoutPromise]));
@@ -136,7 +151,24 @@ client.on('messageCreate', async (message) => {
                 await loadingMsg.edit(`ℹ️ **RougePulseAgent** : ${result.message}`);
             }
             else if (result && result.analysis) {
-                await loadingMsg.edit(formatRougePulseMessage(result.analysis));
+                const formattedMessages = formatRougePulseMessage(result.analysis);
+                if (formattedMessages.length === 1) {
+                    // Un seul message - simple édition
+                    await loadingMsg.edit(formattedMessages[0]);
+                }
+                else {
+                    // Deux messages - éditer le premier, puis envoyer le second
+                    await loadingMsg.edit(formattedMessages[0]);
+                    setTimeout(async () => {
+                        try {
+                            await message.channel.send(formattedMessages[1]);
+                        }
+                        catch (sendError) {
+                            console.error('Error sending second message:', sendError);
+                            await message.channel.send("❌ Erreur lors de l'envoi du second message");
+                        }
+                    }, 500); // Délai de 500ms entre les messages
+                }
             }
             else {
                 await loadingMsg.edit('❌ **Erreur RougePulseAgent** : Résultat invalide ou vide');
@@ -168,22 +200,52 @@ client.on('messageCreate', async (message) => {
         const loadingMsg = await message.reply('📊 **VixombreAgent** analyse la volatilité VIX... ⏳');
         try {
             const agent = new VixombreAgent_1.VixombreAgent();
-            // Add a 95s timeout
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: L'analyse prend trop de temps.")), 95000));
+            // Add a 180s timeout (augmenté pour VIX)
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: L'analyse VIX prend trop de temps.")), 180000));
             const result = (await Promise.race([agent.analyzeVixStructure(), timeoutPromise]));
             if ('error' in result) {
                 await loadingMsg.edit(`❌ Erreur d'analyse VIX : ${result.error}`);
             }
             else {
-                await loadingMsg.edit(formatVixAgentMessage(result));
+                const messages = formatVixAgentMessage(result);
+                if (messages.length === 0) {
+                    await loadingMsg.edit('❌ Erreur : Aucun message généré');
+                    return;
+                }
+                console.log(`[VIX] Envoi de ${messages.length} message(s) (${messages.map(m => m.length).join(', ')} caractères)`);
+                try {
+                    // Mettre à jour le premier message
+                    await loadingMsg.edit(messages[0]);
+                    // Envoyer les messages supplémentaires avec validation
+                    for (let i = 1; i < messages.length; i++) {
+                        const msg = messages[i];
+                        if (msg.length <= 1999) {
+                            await message.channel.send(msg);
+                        }
+                        else {
+                            console.warn(`[VIX] Message ${i + 1} trop long (${msg.length} caractères), envoi annulé`);
+                        }
+                    }
+                }
+                catch (sendError) {
+                    console.error('[VIX] Erreur envoi messages:', sendError);
+                    await loadingMsg.edit(`❌ Erreur envoi : ${sendError instanceof Error ? sendError.message : 'Erreur inconnue'}`);
+                }
             }
         }
         catch (error) {
             console.error('Error in VixAgent command:', error);
             const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+            let userMessage = `❌ Erreur VIX : ${errorMessage.substring(0, 100)}...`;
+            if (errorMessage.includes('Timeout')) {
+                userMessage =
+                    '⏰ **Timeout VIXAgent** : Le scraping VIX prend trop de temps. Réessayez plus tard ou utilisez une commande plus rapide.';
+                userMessage +=
+                    "\n💡 **Suggestion**: Le VIX nécessite l'analyse de plusieurs sources web, essayez pendant les heures de faible activité.";
+            }
             // Truncate error message to avoid Discord 2000 character limit
-            const truncatedError = errorMessage.length > 500 ? errorMessage.substring(0, 497) + '...' : errorMessage;
-            await loadingMsg.edit(`❌ Erreur VIX : ${truncatedError}`);
+            const truncatedError = userMessage.length > 500 ? userMessage.substring(0, 497) + '...' : userMessage;
+            await loadingMsg.edit(truncatedError);
         }
     }
     if (message.content.trim().toLowerCase() === '!vortex500') {
@@ -191,8 +253,8 @@ client.on('messageCreate', async (message) => {
         const loadingMsg = await message.reply('🧪 **Vortex500** analyse le sentiment de marché... ⏳');
         try {
             const agent = new Vortex500Agent_1.Vortex500Agent();
-            // Add a 95s timeout
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: L'analyse prend trop de temps.")), 95000));
+            // Add a 180s timeout (augmenté pour VIX)
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: L'analyse VIX prend trop de temps.")), 180000));
             const result = (await Promise.race([agent.analyzeMarketSentiment(), timeoutPromise]));
             if (result.sentiment === 'N/A') {
                 await loadingMsg.edit(`❌ Analyse Vortex500 indisponible : ${result.summary}`);
@@ -398,77 +460,97 @@ function formatRougePulseMessage(data) {
     // Vérifier et convertir en français si nécessaire
     const frenchNarrative = convertToFrenchIfNeeded(narrative);
     const frenchRec = convertToFrenchIfNeeded(rec);
-    // Utiliser une limite plus généreuse pour éviter les troncatures inutiles
-    const maxNarrativeLength = 500;
-    const truncatedNarrative = frenchNarrative.length > maxNarrativeLength
-        ? frenchNarrative.substring(0, maxNarrativeLength - 3) + '...'
-        : frenchNarrative;
-    let eventsList = '';
-    if (events.length > 0) {
-        // Limit to first 2 events and truncate descriptions
-        const limitedEvents = events.slice(0, 2);
-        eventsList = limitedEvents
-            .map((e) => {
-            const event = e.event || e.name || 'Événement';
-            const details = e.actual_vs_forecast || e.actual || 'N/A';
-            const significance = e.significance || '';
-            return `**• ${event}**\n  └ ${details}${significance ? `\n  └ *${significance}*` : ''}`;
-        })
-            .join('\n\n');
-        if (events.length > 2) {
-            eventsList += `\n\n... et ${events.length - 2} autres événements`;
-        }
-    }
-    else {
-        eventsList = 'Aucun événement majeur détecté.';
-    }
-    // Limiter la recommandation de manière plus intelligente
-    const maxRecLength = 300;
-    const truncatedRec = frenchRec.length > maxRecLength
-        ? frenchRec.substring(0, maxRecLength - 3) + '...'
-        : frenchRec;
     // Gérer le bias ES Futures avec le nouveau format
     const esBias = esFutures?.bias === 'BULLISH'
         ? '🟢 HAUSSIER'
         : esFutures?.bias === 'BEARISH'
             ? '🔴 BAISSIER'
             : '⚪ NEUTRE';
-    // Ajouter la plateforme context si disponible
-    const platformContext = esFutures?.platform_context
-        ? `\n📊 **Contexte Plateformes :** ${esFutures.platform_context.substring(0, 100)}${esFutures.platform_context.length > 100 ? '...' : ''}`
-        : '';
-    const message = `
-**🔴 RougePulse - Expert ES Futures**
-**Impact Session :** ${score}/100
-**ES Futures Bias :** ${esBias}
-
-**📖 Narratif ES Futures :**
-${truncatedNarrative}
-
-**🔥 Événements Clés :**
-${eventsList}
-
-**🎯 Recommandation ES Futures :**
-${truncatedRec}
-${platformContext}
-
-*Analyse ES - TopStep/CME/AMP | Date : ${data.created_at ? new Date(data.created_at).toLocaleString('fr-FR') : 'Date non disponible'}*
-  `.trim();
-    // Optimisation : utiliser la limite maximale de Discord (2000) pas 1900
-    const maxDiscordLength = 2000;
-    if (message.length > maxDiscordLength) {
-        // Troncation intelligente : éviter de couper les mots
-        const ellipsis = '...\n\n📋 *Message tronqué - utilisez !rougepulseagent pour voir l\'analyse complète*';
-        const cutoffPoint = maxDiscordLength - ellipsis.length;
-        let truncatedMessage = message.substring(0, cutoffPoint);
-        // Éviter de couper un mot : chercher le dernier espace
-        const lastSpaceIndex = truncatedMessage.lastIndexOf(' ');
-        if (lastSpaceIndex > cutoffPoint - 50) { // Si on n'est pas trop loin du début
-            truncatedMessage = truncatedMessage.substring(0, lastSpaceIndex);
-        }
-        return truncatedMessage + ellipsis;
+    // Former les événements complets sans troncation
+    let eventsList = '';
+    if (events.length > 0) {
+        eventsList = events
+            .map((e) => {
+            const event = e.event || e.name || 'Événement';
+            const details = e.actual_vs_forecast || e.actual || 'N/A';
+            const significance = e.significance || '';
+            return `**📊 ${event}**\n💫 ${details}${significance ? `\n🎯 ${significance}` : ''}`;
+        })
+            .join('\n\n');
     }
-    return message;
+    else {
+        eventsList = '**📋 Aucun événement majeur détecté**';
+    }
+    // Message 1 : En-tête, narration et début des événements
+    const message1 = `
+**🔴 RougePulse ES Futures Expert** 📊 (1/2)
+**Impact :** ${score}/100 ${score >= 70 ? '🔥' : score >= 50 ? '⚠️' : '📉'} | **Tendance :** ${esBias}
+
+**📈 Analyse de Marché :**
+${frenchNarrative}
+
+**📊 Données Prix ES :**
+${data.sp500_price && !isNaN(data.sp500_price) ? `💹 ${Number(data.sp500_price).toFixed(2)} USD | **Source:** ${data.price_source || 'Conversion SPY'}` : '📊 Prix en cours de récupération...'}
+
+**📅 Événements Économiques :**
+${eventsList}
+  `.trim();
+    // Message 2 : Suite des événements (si nécessaire) et signal trading
+    const message2 = `
+**🎯 Signal Trading ES :**
+${frenchRec}
+
+💹 *ES Futures Analysis | ${(() => {
+        try {
+            return data.created_at && new Date(data.created_at).getTime() > 0
+                ? new Date(data.created_at).toLocaleDateString('fr-FR')
+                : new Date().toLocaleDateString('fr-FR');
+        }
+        catch {
+            return new Date().toLocaleDateString('fr-FR');
+        }
+    })()}*
+  `.trim();
+    // Vérifier si on a besoin de 2 messages
+    if (message1.length <= 1900) {
+        return [message1]; // Un seul message suffit
+    }
+    else {
+        // Séparer intelligemment en 2 messages
+        const midpoint = Math.floor(frenchNarrative.length / 2);
+        const part1Narrative = frenchNarrative.substring(0, midpoint) + '...';
+        const part2Narrative = frenchNarrative.substring(midpoint);
+        const optimizedMessage1 = `
+**🔴 RougePulse ES Futures Expert** 📊 (1/2)
+**Impact :** ${score}/100 ${score >= 70 ? '🔥' : score >= 50 ? '⚠️' : '📉'} | **Tendance :** ${esBias}
+
+**📈 Analyse de Marché :**
+${part1Narrative}
+
+**📅 Événements Économiques :**
+${eventsList}
+    `.trim();
+        const optimizedMessage2 = `
+**🔴 RougePulse ES Futures Expert** 📊 (2/2)
+**📈 Suite Analyse :**
+${part2Narrative}
+
+**🎯 Signal Trading ES :**
+${frenchRec}
+
+💹 *ES Futures Analysis | ${(() => {
+            try {
+                return data.created_at && new Date(data.created_at).getTime() > 0
+                    ? new Date(data.created_at).toLocaleDateString('fr-FR')
+                    : new Date().toLocaleDateString('fr-FR');
+            }
+            catch {
+                return new Date().toLocaleDateString('fr-FR');
+            }
+        })()}*
+    `.trim();
+        return [optimizedMessage1, optimizedMessage2];
+    }
 }
 // Fonction pour convertir l'anglais vers le français si nécessaire
 function convertToFrenchIfNeeded(text) {
@@ -477,106 +559,106 @@ function convertToFrenchIfNeeded(text) {
     // Mots clés anglais à remplacer par leurs équivalents français
     const translations = {
         // Trading terms
-        'bullish': 'haussier',
-        'bearish': 'baissier',
-        'neutral': 'neutre',
-        'long': 'achat',
-        'short': 'vente',
-        'support': 'support',
-        'resistance': 'résistance',
-        'breakout': 'cassure',
-        'reversal': 'retournement',
-        'trend': 'tendance',
-        'volatility': 'volatilité',
-        'momentum': 'momentum',
-        'consolidation': 'consolidation',
-        'range': 'fourchette',
-        'pullback': 'replï',
-        'rally': 'rally',
-        'dip': 'baisse',
-        'crash': 'krach',
+        bullish: 'haussier',
+        bearish: 'baissier',
+        neutral: 'neutre',
+        long: 'achat',
+        short: 'vente',
+        support: 'support',
+        resistance: 'résistance',
+        breakout: 'cassure',
+        reversal: 'retournement',
+        trend: 'tendance',
+        volatility: 'volatilité',
+        momentum: 'momentum',
+        consolidation: 'consolidation',
+        range: 'fourchette',
+        pullback: 'replï',
+        rally: 'rally',
+        dip: 'baisse',
+        crash: 'krach',
         // Economic terms
-        'inflation': 'inflation',
-        'recession': 'récession',
-        'growth': 'croissance',
-        'data': 'données',
-        'report': 'rapport',
-        'forecast': 'prévisions',
-        'actual': 'réel',
-        'estimate': 'estimation',
-        'consumer': 'consommateur',
-        'spending': 'dépenses',
-        'manufacturing': 'manufacturier',
-        'services': 'services',
-        'employment': 'emploi',
-        'unemployment': 'chômage',
-        'interest rates': 'taux d\'intérêt',
+        inflation: 'inflation',
+        recession: 'récession',
+        growth: 'croissance',
+        data: 'données',
+        report: 'rapport',
+        forecast: 'prévisions',
+        actual: 'réel',
+        estimate: 'estimation',
+        consumer: 'consommateur',
+        spending: 'dépenses',
+        manufacturing: 'manufacturier',
+        services: 'services',
+        employment: 'emploi',
+        unemployment: 'chômage',
+        'interest rates': "taux d'intérêt",
         'monetary policy': 'politique monétaire',
         'federal reserve': 'Réserve Fédérale',
-        'Fed': 'Fed',
+        Fed: 'Fed',
         'central bank': 'banque centrale',
         // Market terms
         'stock market': 'marché boursier',
         'equity markets': 'marchés actions',
         'bond market': 'marché obligataire',
-        'commodities': 'matières premières',
-        'currencies': 'devises',
-        'forex': 'forex',
-        'cryptocurrency': 'cryptomonnaie',
-        'bitcoin': 'bitcoin',
-        'BTC': 'BTC',
+        commodities: 'matières premières',
+        currencies: 'devises',
+        forex: 'forex',
+        cryptocurrency: 'cryptomonnaie',
+        bitcoin: 'bitcoin',
+        BTC: 'BTC',
         'S&P 500': 'S&P 500',
         'Dow Jones': 'Dow Jones',
-        'NASDAQ': 'NASDAQ',
+        NASDAQ: 'NASDAQ',
         // Analysis terms
-        'analysis': 'analyse',
-        'indicator': 'indicateur',
-        'signal': 'signal',
-        'recommendation': 'recommandation',
-        'strategy': 'stratégie',
-        'portfolio': 'portefeuille',
-        'risk': 'risque',
-        'reward': 'rendement',
-        'profit': 'profit',
-        'loss': 'perte',
-        'gain': 'gain',
-        'return': 'rendement',
-        'yield': 'rendement',
-        'dividend': 'dividende',
-        'earnings': 'bénéfices',
-        'revenue': 'chiffre d\'affaires',
-        'margin': 'marge',
+        analysis: 'analyse',
+        indicator: 'indicateur',
+        signal: 'signal',
+        recommendation: 'recommandation',
+        strategy: 'stratégie',
+        portfolio: 'portefeuille',
+        risk: 'risque',
+        reward: 'rendement',
+        profit: 'profit',
+        loss: 'perte',
+        gain: 'gain',
+        return: 'rendement',
+        yield: 'rendement',
+        dividend: 'dividende',
+        earnings: 'bénéfices',
+        revenue: "chiffre d'affaires",
+        margin: 'marge',
         // Time periods
-        'daily': 'quotidien',
-        'weekly': 'hebdomadaire',
-        'monthly': 'mensuel',
-        'quarterly': 'trimestriel',
-        'annual': 'annuel',
-        'year': 'année',
-        'month': 'mois',
-        'week': 'semaine',
-        'day': 'jour',
-        'hour': 'heure',
-        'minute': 'minute',
+        daily: 'quotidien',
+        weekly: 'hebdomadaire',
+        monthly: 'mensuel',
+        quarterly: 'trimestriel',
+        annual: 'annuel',
+        year: 'année',
+        month: 'mois',
+        week: 'semaine',
+        day: 'jour',
+        hour: 'heure',
+        minute: 'minute',
         // Descriptive words
-        'strong': 'fort',
-        'weak': 'faible',
-        'high': 'élevé',
-        'low': 'bas',
-        'significant': 'significatif',
-        'important': 'important',
-        'major': 'majeur',
-        'minor': 'mineur',
-        'key': 'clé',
-        'critical': 'critique',
-        'essential': 'essentiel',
-        'crucial': 'crucial',
-        'positive': 'positif',
-        'negative': 'négatif',
-        'optimistic': 'optimiste',
-        'pessimistic': 'pessimiste',
-        'cautious': 'prudent',
-        'aggressive': 'agressif',
+        strong: 'fort',
+        weak: 'faible',
+        high: 'élevé',
+        low: 'bas',
+        significant: 'significatif',
+        important: 'important',
+        major: 'majeur',
+        minor: 'mineur',
+        key: 'clé',
+        critical: 'critique',
+        essential: 'essentiel',
+        crucial: 'crucial',
+        positive: 'positif',
+        negative: 'négatif',
+        optimistic: 'optimiste',
+        pessimistic: 'pessimiste',
+        cautious: 'prudent',
+        aggressive: 'agressif',
         // Common phrases
         'market sentiment': 'sentiment du marché',
         'risk appetite': 'appétit pour le risque',
@@ -602,7 +684,7 @@ function convertToFrenchIfNeeded(text) {
         frenchText = frenchText.replace(regex, french);
     }
     // Corriger les majuscules après les transformations
-    frenchText = frenchText.replace(/\b(haussier|baissier|neutre|achat|vente|support|résistance|cassure|retournement|tendance)\b/gi, (match) => match === match.toUpperCase() ? match.toUpperCase() : match);
+    frenchText = frenchText.replace(/\b(haussier|baissier|neutre|achat|vente|support|résistance|cassure|retournement|tendance)\b/gi, match => (match === match.toUpperCase() ? match.toUpperCase() : match));
     return frenchText;
 }
 function formatHelpMessage() {
@@ -721,7 +803,9 @@ function formatVixAgentMessage(data) {
         CALM: 'CALME 😌',
         EXTREME_CALM: 'TRÈS CALME 😴',
     };
-    return `
+    const messages = [];
+    // Message 1: Résumé principal (garanti < 1000 caractères)
+    const message1 = `
 **📊 VixombreAgent - Analyse Expert VIX**
 **VIX Actuel :** ${current.consensus_value || expert.current_vix || 'N/A'}
 **Tendance :** ${trendMap[expert.vix_trend?.toUpperCase()] || 'N/A'}
@@ -729,21 +813,41 @@ function formatVixAgentMessage(data) {
 **Niveau de Risque :** ${expert.risk_level || 'N/A'}
 
 **💡 Analyse Expert :**
-${expert.expert_summary || 'Aucun résumé disponible.'}
-
+${expert.expert_summary ? (expert.expert_summary.length > 300 ? expert.expert_summary.substring(0, 300) + '...' : expert.expert_summary) : 'Aucun résumé disponible.'}
+  `.trim();
+    if (message1.length > 0)
+        messages.push(message1);
+    // Message 2: Catalyseurs et recommandations (garanti < 1000 caractères)
+    if (expert.catalysts && expert.catalysts.length > 0) {
+        const catalystsText = expert.catalysts
+            .slice(0, 3) // Limiter à 3 catalyseurs maximum
+            .map((c) => `• ${c.length > 50 ? c.substring(0, 50) + '...' : c}`)
+            .join('\n');
+        const message2 = `
 **🔥 Catalyseurs de Volatilité :**
-${expert.catalysts?.length > 0 ? expert.catalysts.map((c) => `• ${c}`).join('\n') : 'Aucun catalyseur identifié'}
+${catalystsText}
+${expert.catalysts.length > 3 ? `... et ${expert.catalysts.length - 3} autres catalyseurs` : ''}
 
 **🎯 Recommandation Trading :**
 Stratégie : ${expert.trading_recommendations?.strategy || 'N/A'}
-Sentiment ES Futures : ${expert.market_implications?.es_futures_bias || 'N/A'}
-
+ES Futures : ${expert.market_implications?.es_futures_bias || 'N/A'}
+    `.trim();
+        if (message2.length > 0 && message2.length <= 1990)
+            messages.push(message2);
+    }
+    // Message 3: Métadonnées (garanti < 500 caractères)
+    const message3 = `
 **📊 Métadonnées :**
-Sources scrapées : ${metadata.sources_scraped || 0}
+Source : ${metadata.data_source || 'N/A'}
+Enregistrements : ${metadata.record_count || 0}
 Analyse : ${metadata.analysis_type || 'N/A'}
 
 *Généré par VixombreAgent AI*
-    `.trim();
+  `.trim();
+    if (message3.length > 0)
+        messages.push(message3);
+    // Validation finale : garantir que tous les messages sont < 2000 caractères
+    return messages.filter(msg => msg.length > 0 && msg.length <= 1990);
 }
 function formatVortex500Message(data) {
     const sentimentMap = {

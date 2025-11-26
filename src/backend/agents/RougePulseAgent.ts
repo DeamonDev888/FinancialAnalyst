@@ -10,8 +10,24 @@ import { FinnhubClient, StockData } from '../ingestion/FinnhubClient';
 dotenv.config();
 
 export interface TechnicalLevels {
-  supports: Array<{ level: number; strength: 'faible' | 'moyen' | 'fort'; edge_score: number; source: string }>;
-  resistances: Array<{ level: number; strength: 'faible' | 'moyen' | 'fort'; edge_score: number; source: string }>;
+  supports: Array<{
+    level: number;
+    strength: 'faible' | 'moyen' | 'fort';
+    edge_score: number;
+    source: string;
+    edge_reasoning: string; // Pourquoi ce niveau a un edge
+    market_context: string; // Ce que disent les intervenants
+    confirmation_factors: string[]; // Facteurs qui confirment l'edge
+  }>;
+  resistances: Array<{
+    level: number;
+    strength: 'faible' | 'moyen' | 'fort';
+    edge_score: number;
+    source: string;
+    edge_reasoning: string; // Pourquoi ce niveau a un edge
+    market_context: string; // Ce que disent les intervenants
+    confirmation_factors: string[]; // Facteurs qui confirment l'edge
+  }>;
   current_price: number;
   daily_range: { high: number; low: number };
   round_levels: Array<{ level: number; type: 'psychological'; significance: string }>;
@@ -51,7 +67,9 @@ export class RougePulseAgent extends BaseAgentSimple {
       if (!sp500Data) {
         console.warn(`[${this.agentName}] ⚠️ Impossible de récupérer les données S&P 500`);
       } else {
-        console.log(`[${this.agentName}] ✅ S&P 500: ${sp500Data.current.toFixed(2)} (${sp500Data.percent_change > 0 ? '+' : ''}${sp500Data.percent_change.toFixed(2)}%)`);
+        console.log(
+          `[${this.agentName}] ✅ S&P 500: ${sp500Data.current.toFixed(2)} (${sp500Data.percent_change > 0 ? '+' : ''}${sp500Data.percent_change.toFixed(2)}%)`
+        );
       }
 
       // 1. Fetch Data from Database
@@ -72,7 +90,12 @@ export class RougePulseAgent extends BaseAgentSimple {
       const technicalLevels = await this.analyzeTechnicalLevels(sp500Data || undefined, news);
 
       // 2. Prepare Enhanced Prompt with Technical Data
-      const prompt = this.createEnhancedAnalysisPrompt(events, newsContext, technicalLevels, sp500Data || undefined);
+      const prompt = this.createEnhancedAnalysisPrompt(
+        events,
+        newsContext,
+        technicalLevels,
+        sp500Data || undefined
+      );
 
       // 3. Analyze with KiloCode
       const aiAnalysis = await this.tryKiloCodeWithFile(prompt);
@@ -82,7 +105,7 @@ export class RougePulseAgent extends BaseAgentSimple {
       }
 
       // 4. Save Analysis to Database with Technical Data
-      await this.saveAnalysisToDatabase(aiAnalysis, technicalLevels);
+      await this.saveAnalysisToDatabase(aiAnalysis, technicalLevels, sp500Data || undefined);
 
       console.log(`[${this.agentName}] 🎉 Enhanced analysis completed and saved successfully.`);
 
@@ -100,25 +123,43 @@ export class RougePulseAgent extends BaseAgentSimple {
     }
   }
 
-  private async saveAnalysisToDatabase(analysis: any, technicalLevels?: TechnicalLevels): Promise<void> {
+  private async saveAnalysisToDatabase(
+    analysis: any,
+    technicalLevels?: TechnicalLevels,
+    _sp500Data?: StockData
+  ): Promise<void> {
     const client = await this.pool.connect();
     try {
       // Sauvegarder l'analyse principale
+      const sp500Price = technicalLevels?.current_price || null; // Define sp500Price for the new INSERT statement
+
+      // Déterminer la source du prix
+      const priceSource = _sp500Data
+        ? _sp500Data.symbol === 'ES_CONVERTED'
+          ? 'SPY × 9.5 (Conversion)'
+          : _sp500Data.symbol?.toUpperCase() || 'Source inconnue'
+        : null;
+
       await client.query(
         `
               INSERT INTO rouge_pulse_analyses
-              (impact_score, market_narrative, high_impact_events, asset_analysis, trading_recommendation, raw_analysis, sp500_price, technical_levels, created_at)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+              (impact_score, market_narrative, high_impact_events, asset_analysis, trading_recommendation, raw_analysis, sp500_price, price_source, technical_levels, es_futures_analysis, bot_signal, agent_state, next_session_levels, created_at)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
           `,
         [
           analysis.impact_score,
           analysis.market_narrative,
           JSON.stringify(analysis.high_impact_events),
-          JSON.stringify(analysis.asset_analysis),
+          JSON.stringify(analysis.asset_analysis || {}), // Fallback for backward compatibility
           analysis.trading_recommendation,
           JSON.stringify(analysis),
-          technicalLevels?.current_price || null,
-          JSON.stringify(technicalLevels || {}),
+          sp500Price,
+          priceSource,
+          JSON.stringify(technicalLevels),
+          JSON.stringify(analysis.es_futures_analysis || {}),
+          JSON.stringify(analysis.bot_signal || {}),
+          JSON.stringify(analysis.agent_state || {}),
+          JSON.stringify(analysis.next_session_levels || {}),
         ]
       );
 
@@ -130,7 +171,10 @@ export class RougePulseAgent extends BaseAgentSimple {
     }
   }
 
-  private async analyzeTechnicalLevels(sp500Data?: StockData, news: any[] = []): Promise<TechnicalLevels> {
+  private async analyzeTechnicalLevels(
+    sp500Data?: StockData,
+    news: any[] = []
+  ): Promise<TechnicalLevels> {
     console.log(`[${this.agentName}] 📊 Analyse des niveaux techniques...`);
 
     if (!sp500Data) {
@@ -157,8 +201,14 @@ export class RougePulseAgent extends BaseAgentSimple {
       fibonacci_levels: [],
     };
 
-    // 1. Niveaux psychologiques ronds (tous les 50 points)
-    for (let level = Math.floor(currentPrice / 50) * 50 - 200; level <= Math.floor(currentPrice / 50) * 50 + 200; level += 50) {
+    // 1. Niveaux psychologiques ronds pour ES Futures (tous les 100 points)
+    const stepSize = currentPrice > 1000 ? 100 : 50; // 100 pour ES Futures, 50 pour SPY
+    const range = currentPrice > 1000 ? 500 : 200; // Plus grand range pour ES
+    for (
+      let level = Math.floor(currentPrice / stepSize) * stepSize - range;
+      level <= Math.floor(currentPrice / stepSize) * stepSize + range;
+      level += stepSize
+    ) {
       levels.round_levels.push({
         level: level,
         type: 'psychological',
@@ -184,18 +234,31 @@ export class RougePulseAgent extends BaseAgentSimple {
     levels.fibonacci_levels = this.calculateFibonacciLevels(sp500Data);
     this.addFibonacciLevels(levels, levels.fibonacci_levels);
 
-    console.log(`[${this.agentName}] 📈 Niveaux trouvés: ${levels.supports.length} supports, ${levels.resistances.length} résistances`);
+    console.log(
+      `[${this.agentName}] 📈 Niveaux trouvés: ${levels.supports.length} supports, ${levels.resistances.length} résistances`
+    );
 
     return levels;
   }
 
   private getPsychologicalSignificance(level: number, currentPrice: number): string {
-    const distance = Math.abs(level - currentPrice) / currentPrice * 100;
+    const distance = (Math.abs(level - currentPrice) / currentPrice) * 100;
 
-    if (distance < 1) return 'Niveau psychologique actuel';
-    if (distance < 3) return 'Zone psychologique proche';
-    if (distance < 5) return 'Niveau psychologique notable';
-    if (level % 100 === 0) return 'Niveau psychologique majeur';
+    if (distance < 0.5) return 'Niveau psychologique actuel';
+    if (distance < 2) return 'Zone psychologique proche';
+    if (distance < 4) return 'Niveau psychologique notable';
+
+    // Niveaux majeurs pour ES Futures (tous les 500 points)
+    if (currentPrice > 1000) {
+      if (level % 500 === 0) return 'Niveau psychologique majeur ES';
+      if (level % 250 === 0) return 'Niveau psychologique important ES';
+      if (level % 100 === 0) return 'Niveau psychologique ES';
+    } else {
+      // Niveaux pour SPY (tous les 50 points)
+      if (level % 100 === 0) return 'Niveau psychologique majeur SPY';
+      if (level % 50 === 0) return 'Niveau psychologique SPY';
+    }
+
     return 'Niveau psychologique secondaire';
   }
 
@@ -223,16 +286,20 @@ export class RougePulseAgent extends BaseAgentSimple {
         const matches = [...text.matchAll(pattern)];
         matches.forEach(match => {
           const level = parseInt(match[1]);
-          if (level >= currentPrice * 0.8 && level <= currentPrice * 1.2) { // +/- 20% du prix actuel
+          if (level >= currentPrice * 0.8 && level <= currentPrice * 1.2) {
+            // +/- 20% du prix actuel
             const type = match[0].toLowerCase().includes('support') ? 'support' : 'resistance';
 
+            const edgeData = this.calculateEdgeScore(text, type, currentPrice);
             levels.push({
               level: level,
               type: type,
               source: newsItem.source,
               strength: this.calculateStrengthFromText(text, level, currentPrice),
-              edge_score: this.calculateEdgeScore(text, type, currentPrice),
-              reason: `Extrait de: ${newsItem.title.substring(0, 100)}...`,
+              edge_score: edgeData.score,
+              edge_reasoning: edgeData.reasoning,
+              market_context: edgeData.market_context,
+              confirmation_factors: edgeData.confirmation_factors,
             });
           }
         });
@@ -242,8 +309,22 @@ export class RougePulseAgent extends BaseAgentSimple {
     return levels;
   }
 
-  private calculateStrengthFromText(text: string, level: number, currentPrice: number): 'faible' | 'moyen' | 'fort' {
-    const strongIndicators = ['strong', 'major', 'critical', 'key', 'important', 'majeur', 'critique', 'fort', 'important'];
+  private calculateStrengthFromText(
+    text: string,
+    level: number,
+    currentPrice: number
+  ): 'faible' | 'moyen' | 'fort' {
+    const strongIndicators = [
+      'strong',
+      'major',
+      'critical',
+      'key',
+      'important',
+      'majeur',
+      'critique',
+      'fort',
+      'important',
+    ];
     const weakIndicators = ['minor', 'small', 'weak', 'faible', 'mineur'];
 
     const textLower = text.toLowerCase();
@@ -252,38 +333,211 @@ export class RougePulseAgent extends BaseAgentSimple {
     if (weakIndicators.some(indicator => textLower.includes(indicator))) return 'faible';
 
     // Basé sur la proximité du prix actuel
-    const distance = Math.abs(level - currentPrice) / currentPrice * 100;
+    const distance = (Math.abs(level - currentPrice) / currentPrice) * 100;
     if (distance < 2) return 'fort';
     if (distance < 5) return 'moyen';
     return 'faible';
   }
 
-  private calculateEdgeScore(text: string, type: string, currentPrice: number): number {
+  private calculateEdgeScore(
+    text: string,
+    type: string,
+    currentPrice: number
+  ): {
+    score: number;
+    reasoning: string;
+    market_context: string;
+    confirmation_factors: string[];
+  } {
     let score = 50; // Score de base
+    const reasoning: string[] = [];
+    const market_context: string[] = [];
+    const confirmation_factors: string[] = [];
 
-    // Bonus si multiple mentions
-    const supportMentions = (text.match(/support/gi) || []).length;
-    const resistanceMentions = (text.match(/résistance|resistance/gi) || []).length;
-    score += (supportMentions + resistanceMentions) * 10;
+    // Analyse des mots-clés des intervenants institutionnels
+    const institutionalTerms = [
+      'institutional',
+      'fund managers',
+      'hedge funds',
+      'asset managers',
+      'goldman sachs',
+      'jpmorgan',
+      'morgan stanley',
+      'blackrock',
+      'institutions',
+      'portfolio managers',
+      'analysts',
+      'traders',
+    ];
+    const technicalTerms = [
+      'technical analysis',
+      'chart pattern',
+      'breakout',
+      'support',
+      'resistance',
+      'trend line',
+      'moving average',
+      'volume',
+      'candlestick',
+    ];
+    const economicTerms = [
+      'fed',
+      'inflation',
+      'interest rates',
+      'economic data',
+      'gdp',
+      'employment',
+      'cpi',
+      'ppi',
+      'retail sales',
+      'fomc',
+    ];
 
-    // Bonus si cohérence directionnelle
-    const bullishWords = ['bullish', 'hausse', 'montée', 'up'];
-    const bearishWords = ['bearish', 'baisse', 'descente', 'down'];
+    // Vérifier qui parle et analyse le contexte
+    const textLower = text.toLowerCase();
 
-    const bullishCount = bullishWords.filter(word => text.includes(word)).length;
-    const bearishCount = bearishWords.filter(word => text.includes(word)).length;
-
-    if ((type === 'resistance' && bearishCount > bullishCount) ||
-        (type === 'support' && bullishCount > bearishCount)) {
-      score += 25; // Cohérence directionnelle
+    if (institutionalTerms.some(term => textLower.includes(term))) {
+      confirmation_factors.push('Validation institutionnelle');
+      score += 20;
+      reasoning.push('Institutions mentionnent ce niveau');
+      market_context.push('Gestionnaires de fonds et banques actives sur ce niveau');
     }
 
-    // Bonus si provenance fiable
-    if (text.includes('reuters') || text.includes('bloomberg') || text.includes('wsj')) {
+    if (technicalTerms.some(term => textLower.includes(term))) {
+      confirmation_factors.push('Confirmation technique');
+      score += 15;
+      reasoning.push('Analyse technique confirme le niveau');
+      market_context.push('Analystes techniques identifient cette zone');
+    }
+
+    if (economicTerms.some(term => textLower.includes(term))) {
+      confirmation_factors.push('Contexte économique');
+      score += 18;
+      reasoning.push('Données économiques influencent ce niveau');
+      market_context.push('Politique monétaire et indicateurs économiques pertinents');
+    }
+
+    // Cohérence directionnelle avancée
+    const bullishWords = [
+      'bullish',
+      'hausse',
+      'montée',
+      'up',
+      'rally',
+      'momentum',
+      'demand',
+      'buying',
+      'accumulation',
+      'long',
+    ];
+    const bearishWords = [
+      'bearish',
+      'baisse',
+      'descente',
+      'down',
+      'decline',
+      'selling',
+      'pressure',
+      'distribution',
+      'short',
+    ];
+
+    const bullishCount = bullishWords.filter(word => textLower.includes(word)).length;
+    const bearishCount = bearishWords.filter(word => textLower.includes(word)).length;
+
+    if (
+      (type === 'resistance' && bearishCount > bullishCount) ||
+      (type === 'support' && bullishCount > bearishCount)
+    ) {
+      score += 30;
+      reasoning.push(
+        `Cohérence directionnelle forte: ${type === 'resistance' ? 'pression vendeuse' : 'pression acheteuse'}`
+      );
+      market_context.push(
+        `${type === 'resistance' ? 'Les vendeurs' : 'Les acheteurs'} ont l'avantage selon les intervenants`
+      );
+    } else if (bullishCount > bearishCount || bearishCount > bullishCount) {
+      score -= 20;
+      reasoning.push(`Conflit directionnel détecté`);
+      market_context.push(`Signaux contradictoires des participants au marché`);
+    }
+
+    // Qualité et poids des sources
+    const premiumSources = ['reuters', 'bloomberg', 'wall street journal', 'financial times'];
+    const reliableSources = ['cnbc', 'marketwatch', 'yahoo finance', 'seeking alpha'];
+
+    if (premiumSources.some(source => textLower.includes(source))) {
+      confirmation_factors.push('Source premium validée');
+      score += 25;
+      reasoning.push('Médias financiers de référence confirment');
+      market_context.push('Couverture par les plus grandes institutions financières');
+    } else if (reliableSources.some(source => textLower.includes(source))) {
+      confirmation_factors.push('Source fiable');
       score += 15;
     }
 
-    return Math.min(100, Math.max(0, score));
+    // Impact des chiffres et données quantifiées
+    const numberPatterns = text.match(/\d+(\.\d+)?%/g);
+    if (numberPatterns) {
+      const significantNumbers = numberPatterns.filter(n => {
+        const num = parseFloat(n);
+        return num >= 1 || num <= -1; // Chiffres significatifs
+      });
+      if (significantNumbers.length > 0) {
+        confirmation_factors.push('Impact quantifié');
+        score += 10 * Math.min(significantNumbers.length, 3);
+        reasoning.push(
+          `Données chiffrées significatives: ${significantNumbers.slice(0, 3).join(', ')}%`
+        );
+        market_context.push("Mesures précises d'impact et de changement");
+      }
+    }
+
+    // Analyse du volume et de la liquidité
+    if (
+      textLower.includes('volume') ||
+      textLower.includes('liquidity') ||
+      textLower.includes('open interest')
+    ) {
+      confirmation_factors.push('Analyse volume/liquidité');
+      score += 12;
+      reasoning.push('Volume et liquidité analysés');
+      market_context.push('Profondeur du marché et intérêt des traders considérés');
+    }
+
+    // Multiple mentions renforcent la pertinence
+    const levelMentions = (text.match(/\d{3,5}/g) || []).length;
+    if (levelMentions >= 3) {
+      confirmation_factors.push('Multiple mentions');
+      score += 8;
+      reasoning.push('Niveau mentionné plusieurs fois');
+      market_context.push('Fréquence de mention indique importance');
+    }
+
+    // Proximité stratégique
+    const distance = (Math.abs(currentPrice * 0.3) / currentPrice) * 100;
+    if (distance < 2) {
+      score += 10;
+      reasoning.push('Proximité stratégique au prix actuel');
+    }
+
+    // Limites du score
+    score = Math.min(100, Math.max(0, score));
+
+    // Classification du niveau de confiance
+    let confidenceLevel = 'Modérée';
+    if (score >= 80) confidenceLevel = 'Élevée';
+    else if (score >= 65) confidenceLevel = 'Forte';
+    else if (score <= 40) confidenceLevel = 'Faible';
+
+    reasoning.unshift(`Niveau de confiance: ${confidenceLevel} (${score}/100)`);
+
+    return {
+      score,
+      reasoning: reasoning.join('; '),
+      market_context: market_context.join('; ') || 'Dynamique standard du marché applicable',
+      confirmation_factors,
+    };
   }
 
   private addBasicTechnicalLevels(levels: TechnicalLevels, sp500Data: StockData): void {
@@ -296,24 +550,35 @@ export class RougePulseAgent extends BaseAgentSimple {
         strength: 'moyen',
         edge_score: 60,
         source: 'Plus bas de la journée',
+        edge_reasoning: 'Plus bas journalier établit le support technique primaire',
+        market_context: 'Niveau psychologique pour traders intraday',
+        confirmation_factors: [
+          'Plus bas de la séance',
+          'Support technique visible',
+          'Niveau de référence',
+        ],
       });
     }
 
     if (previous_close) {
+      const closeLevel = {
+        level: previous_close,
+        strength: 'faible' as const,
+        edge_score: 40,
+        source: 'Clôture précédente',
+        edge_reasoning: 'Niveau de clôture précédente comme référence technique secondaire',
+        market_context: 'Point de repère pour traders swing et investisseurs',
+        confirmation_factors: [
+          'Clôture journalière',
+          'Niveau psychologique modéré',
+          'Point de repère technique',
+        ],
+      };
+
       if (previous_close < current) {
-        levels.supports.push({
-          level: previous_close,
-          strength: 'faible',
-          edge_score: 40,
-          source: 'Clôture précédente',
-        });
+        levels.supports.push(closeLevel);
       } else {
-        levels.resistances.push({
-          level: previous_close,
-          strength: 'faible',
-          edge_score: 40,
-          source: 'Clôture précédente',
-        });
+        levels.resistances.push(closeLevel);
       }
     }
 
@@ -323,11 +588,24 @@ export class RougePulseAgent extends BaseAgentSimple {
         strength: 'moyen',
         edge_score: 60,
         source: 'Plus haut de la journée',
+        edge_reasoning: 'Plus haut journalier établit la résistance technique primaire',
+        market_context: 'Niveau psychologique pour les prises de profits',
+        confirmation_factors: [
+          'Plus haut de la séance',
+          'Résistance technique visible',
+          'Zone de distribution',
+        ],
       });
     }
   }
 
-  private calculatePivotPoints(data: StockData): { p: number; r1: number; r2: number; s1: number; s2: number } {
+  private calculatePivotPoints(data: StockData): {
+    p: number;
+    r1: number;
+    r2: number;
+    s1: number;
+    s2: number;
+  } {
     const { high, low, current } = data;
     const p = (high + low + current) / 3;
     const r1 = 2 * p - low;
@@ -338,24 +616,78 @@ export class RougePulseAgent extends BaseAgentSimple {
     return { p, r1, r2, s1, s2 };
   }
 
-  private addPivotLevels(levels: TechnicalLevels, pivots: { p: number; r1: number; r2: number; s1: number; s2: number }): void {
+  private addPivotLevels(
+    levels: TechnicalLevels,
+    pivots: { p: number; r1: number; r2: number; s1: number; s2: number }
+  ): void {
     levels.supports.push(
-      { level: pivots.s1, strength: 'moyen', edge_score: 65, source: 'Pivot S1' },
-      { level: pivots.s2, strength: 'fort', edge_score: 75, source: 'Pivot S2' }
+      {
+        level: pivots.s1,
+        strength: 'moyen',
+        edge_score: 65,
+        source: 'Pivot S1',
+        edge_reasoning: 'Support pivot standard calculé sur données journalières',
+        market_context: 'Niveau technique surveillé par les traders intraday',
+        confirmation_factors: ['Calcul mathématique pivot', 'Support technique standard'],
+      },
+      {
+        level: pivots.s2,
+        strength: 'fort',
+        edge_score: 75,
+        source: 'Pivot S2',
+        edge_reasoning: 'Second support pivot avec forte signification technique',
+        market_context: 'Zone de support importante pour les mouvements de prix étendus',
+        confirmation_factors: ['Pivot S2 fort', 'Support majeur', 'Zone daccumulation potentielle'],
+      }
     );
     levels.resistances.push(
-      { level: pivots.r1, strength: 'moyen', edge_score: 65, source: 'Pivot R1' },
-      { level: pivots.r2, strength: 'fort', edge_score: 75, source: 'Pivot R2' }
+      {
+        level: pivots.r1,
+        strength: 'moyen',
+        edge_score: 65,
+        source: 'Pivot R1',
+        edge_reasoning: 'Résistance pivot standard pour première cible haussière',
+        market_context: 'Objectif technique commun pour les mouvements inversés',
+        confirmation_factors: ['Résistance pivot R1', 'Premier objectif haussier'],
+      },
+      {
+        level: pivots.r2,
+        strength: 'fort',
+        edge_score: 75,
+        source: 'Pivot R2',
+        edge_reasoning: 'Résistance pivot majeure pour mouvements directionnels forts',
+        market_context: 'Zone critique pouvant inverser ou accélérer les tendances',
+        confirmation_factors: [
+          'Résistance forte',
+          'Pivot majeur',
+          'Zone de distribution potentielle',
+        ],
+      }
     );
     // Pivot central
+    const pivotCentralEdge = {
+      level: pivots.p,
+      strength: 'fort' as const,
+      edge_score: 70,
+      source: 'Pivot Central (P)',
+      edge_reasoning:
+        pivots.p < levels.current_price
+          ? 'Pivot central agissant comme support technique important'
+          : 'Pivot central agissant comme résistance technique importante',
+      market_context: 'Niveau pivot surveillé par tous les traders techniques',
+      confirmation_factors: ['Pivot journalier', 'Niveau central', 'Point de référence technique'],
+    };
+
     if (pivots.p < levels.current_price) {
-      levels.supports.push({ level: pivots.p, strength: 'fort', edge_score: 70, source: 'Pivot Central (P)' });
+      levels.supports.push(pivotCentralEdge);
     } else {
-      levels.resistances.push({ level: pivots.p, strength: 'fort', edge_score: 70, source: 'Pivot Central (P)' });
+      levels.resistances.push(pivotCentralEdge);
     }
   }
 
-  private calculateFibonacciLevels(data: StockData): Array<{ level: number; type: 'retracement'; percent: string }> {
+  private calculateFibonacciLevels(
+    data: StockData
+  ): Array<{ level: number; type: 'retracement'; percent: string }> {
     const { high, low } = data;
     const range = high - low;
     if (range <= 0) return [];
@@ -368,12 +700,32 @@ export class RougePulseAgent extends BaseAgentSimple {
     ];
   }
 
-  private addFibonacciLevels(levels: TechnicalLevels, fibs: Array<{ level: number; type: 'retracement'; percent: string }>): void {
+  private addFibonacciLevels(
+    levels: TechnicalLevels,
+    fibs: Array<{ level: number; type: 'retracement'; percent: string }>
+  ): void {
     fibs.forEach(fib => {
+      const fibLevel = {
+        level: fib.level,
+        strength: 'moyen' as const,
+        edge_score: 55,
+        source: `Fibo ${fib.percent}`,
+        edge_reasoning: `Retracement Fibonacci ${fib.percent} calculé sur le range journalier`,
+        market_context:
+          fib.level < levels.current_price
+            ? `Support Fibonacci ${fib.percent} surveillé pour rebonds potentiels`
+            : `Résistance Fibonacci ${fib.percent} surveillé pour corrections potentielles`,
+        confirmation_factors: [
+          `Fibonacci ${fib.percent}`,
+          'Ratio mathématique doré',
+          fib.level < levels.current_price ? 'Support technique' : 'Résistance technique',
+        ],
+      };
+
       if (fib.level < levels.current_price) {
-        levels.supports.push({ level: fib.level, strength: 'moyen', edge_score: 55, source: `Fibo ${fib.percent}` });
+        levels.supports.push(fibLevel);
       } else {
-        levels.resistances.push({ level: fib.level, strength: 'moyen', edge_score: 55, source: `Fibo ${fib.percent}` });
+        levels.resistances.push(fibLevel);
       }
     });
   }
@@ -412,29 +764,68 @@ export class RougePulseAgent extends BaseAgentSimple {
     }
   }
 
-  private createEnhancedAnalysisPrompt(events: any[], newsContext: string = '', technicalLevels?: TechnicalLevels, sp500Data?: StockData): string {
-    const technicalContext = technicalLevels ? `
-## 📊 DONNÉES TECHNIQUES DU S&P 500 EN TEMPS RÉEL:
+  private createEnhancedAnalysisPrompt(
+    events: any[],
+    newsContext: string = '',
+    technicalLevels?: TechnicalLevels,
+    sp500Data?: StockData
+  ): string {
+    const technicalContext = technicalLevels
+      ? `
+## 📊 DONNÉES TECHNIQUES ES FUTURES EN TEMPS RÉEL:
 
 **Prix Actuel:** ${sp500Data ? sp500Data.current.toFixed(2) : 'N/A'} USD
+**Source:** ${sp500Data ? (sp500Data.symbol === 'ES_CONVERTED' ? 'SPY × 9.5 (Conversion)' : sp500Data.symbol.toUpperCase()) : 'N/A'}
 **Variation Journalière:** ${sp500Data ? `${sp500Data.change > 0 ? '+' : ''}${sp500Data.change.toFixed(2)} (${sp500Data.percent_change > 0 ? '+' : ''}${sp500Data.percent_change.toFixed(2)}%)` : 'N/A'}
 **Fourchette du Jour:** ${sp500Data ? `${sp500Data.low.toFixed(2)} - ${sp500Data.high.toFixed(2)}` : 'N/A'}
 
-**NIVEAUX DE SUPPORT IMPORTANTS (par ordre de pertinence):**
-${technicalLevels.supports.map((s, i) => `${i+1}. ${s.level.toFixed(2)} - Force: ${s.strength.toUpperCase()}, Edge Score: ${s.edge_score}/100, Source: ${s.source}`).join('\n') || 'Aucun support identifié'}
+**NIVEAUX DE SUPPORT IMPORTANTS (avec Edge Scoring détaillé):**
+${
+  technicalLevels.supports
+    .map(
+      (
+        s,
+        i
+      ) => `${i + 1}. ${s.level.toFixed(2)} - Force: ${s.strength.toUpperCase()}, Edge Score: ${s.edge_score}/100
+   • Edge Reasoning: ${s.edge_reasoning}
+   • Contexte Marché: ${s.market_context}
+   • Facteurs Confirmation: ${s.confirmation_factors.join(', ')}
+   • Source: ${s.source}`
+    )
+    .join('\n\n') || 'Aucun support identifié'
+}
 
-**NIVEAUX DE RÉSISTANCE IMPORTANTS (par ordre de pertinence):**
-${technicalLevels.resistances.map((r, i) => `${i+1}. ${r.level.toFixed(2)} - Force: ${r.strength.toUpperCase()}, Edge Score: ${r.edge_score}/100, Source: ${r.source}`).join('\n') || 'Aucune résistance identifiée'}
+**NIVEAUX DE RÉSISTANCE IMPORTANTS (avec Edge Scoring détaillé):**
+${
+  technicalLevels.resistances
+    .map(
+      (
+        r,
+        i
+      ) => `${i + 1}. ${r.level.toFixed(2)} - Force: ${r.strength.toUpperCase()}, Edge Score: ${r.edge_score}/100
+   • Edge Reasoning: ${r.edge_reasoning}
+   • Contexte Marché: ${r.market_context}
+   • Facteurs Confirmation: ${r.confirmation_factors.join(', ')}
+   • Source: ${r.source}`
+    )
+    .join('\n\n') || 'Aucune résistance identifiée'
+}
 
 **NIVEAUX PSYCHOLOGIQUES RONDS:**
-${technicalLevels.round_levels.filter(l => l.significance.includes('majeur') || l.significance.includes('proche')).map(l => `- ${l.level}: ${l.significance}`).join('\n') || 'Aucun niveau psychologique significatif'}
+${
+  technicalLevels.round_levels
+    .filter(l => l.significance.includes('majeur') || l.significance.includes('proche'))
+    .map(l => `- ${l.level}: ${l.significance}`)
+    .join('\n') || 'Aucun niveau psychologique significatif'
+}
 
 **POINTS PIVOTS (Standard):**
 P: ${technicalLevels.pivot_points.p.toFixed(2)} | R1: ${technicalLevels.pivot_points.r1.toFixed(2)} | S1: ${technicalLevels.pivot_points.s1.toFixed(2)}
 
 **RETRACEMENTS DE FIBONACCI (Range du jour):**
 ${technicalLevels.fibonacci_levels.map(f => `- ${f.percent}: ${f.level.toFixed(2)}`).join('\n') || 'N/A'}
-` : '';
+`
+      : '';
 
     return `
 You are RougePulse, an expert ES FUTURES technical analyst specializing in E-mini S&P 500 trading with deep understanding of market microstructure, price levels, futures data, and trading edge. You trade exclusively on TOPSTEP, CME GROUP, and AMP FUTURES platforms.
@@ -577,7 +968,7 @@ Analyze the data above and return ONLY the requested JSON.
 
   private async parseOutput(stdout: string): Promise<Record<string, unknown> | null> {
     try {
-      const clean = stdout.replace(/\u001b\[[0-9;]*m/g, '').replace(/\u001b\[[0-9;]*[A-Z]/g, '');
+      const clean = stdout.replace(/\\x1b\[[0-9;]*m/g, '').replace(/\\x1b\[[0-9;]*[A-Z]/g, '');
 
       // Strategy 1: Handle KiloCode Streaming JSON Output
       const lines = clean.split('\n');
@@ -708,7 +1099,7 @@ Analyze the data above and return ONLY the requested JSON.
       const repaired = jsonStr.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
       try {
         return JSON.parse(repaired);
-      } catch (_e2) {
+      } catch {
         // Continue to next repair attempt
       }
 
@@ -729,7 +1120,7 @@ Analyze the data above and return ONLY the requested JSON.
         const fixed = jsonStr + completion;
         console.log(`[${this.agentName}] Smart repair: added ${completion}`);
         return JSON.parse(fixed);
-      } catch (_e3) {
+      } catch {
         // Continue to next repair attempt
       }
 
@@ -744,7 +1135,7 @@ Analyze the data above and return ONLY the requested JSON.
         try {
           console.log(`[${this.agentName}] Fixed trading_recommendation field`);
           return JSON.parse(fixedJson);
-        } catch (_e4) {
+        } catch {
           // Continue to next repair attempt
         }
       }
@@ -752,17 +1143,17 @@ Analyze the data above and return ONLY the requested JSON.
       // Repair 4: Force complete object structure
       try {
         return JSON.parse(jsonStr + '}');
-      } catch (_e5) {
+      } catch {
         // Continue to next repair attempt
       }
       try {
         return JSON.parse(jsonStr + ']}');
-      } catch (_e6) {
+      } catch {
         // Continue to next repair attempt
       }
       try {
         return JSON.parse(jsonStr + '"}]}');
-      } catch (_e7) {
+      } catch {
         // Continue to next repair attempt
       }
 
@@ -777,7 +1168,7 @@ Analyze the data above and return ONLY the requested JSON.
           console.log(`[${this.agentName}] Extracted partial data as fallback`);
           return partial;
         }
-      } catch (_e8) {
+      } catch {
         // All repair attempts failed
       }
 
@@ -837,44 +1228,55 @@ Analyze the data above and return ONLY the requested JSON.
       if (impactMatch || narrativeText || sp500Data) {
         const partialData = {
           impact_score: impactMatch ? parseInt(impactMatch[1]) : 25,
-          market_narrative: narrativeText || 'Analyse partielle - données JSON tronquées mais utilisables',
+          market_narrative:
+            narrativeText || 'Analyse partielle - données JSON tronquées mais utilisables',
           asset_analysis: {
             ES_Futures: {
-              bias: narrativeText.toLowerCase().includes('hauss') ? 'BULLISH' :
-                     narrativeText.toLowerCase().includes('baiss') ? 'BEARISH' : 'NEUTRAL',
-              reasoning: 'Extrait de l\'analyse tronquée'
+              bias: narrativeText.toLowerCase().includes('hauss')
+                ? 'BULLISH'
+                : narrativeText.toLowerCase().includes('baiss')
+                  ? 'BEARISH'
+                  : 'NEUTRAL',
+              reasoning: "Extrait de l'analyse tronquée",
             },
             Bitcoin: {
-              bias: narrativeText.toLowerCase().includes('hauss') ? 'BULLISH' :
-                     narrativeText.toLowerCase().includes('baiss') ? 'BEARISH' : 'NEUTRAL',
-              reasoning: 'Extrait de l\'analyse tronquée'
+              bias: narrativeText.toLowerCase().includes('hauss')
+                ? 'BULLISH'
+                : narrativeText.toLowerCase().includes('baiss')
+                  ? 'BEARISH'
+                  : 'NEUTRAL',
+              reasoning: "Extrait de l'analyse tronquée",
             },
           },
           trading_recommendation: narrativeText
             ? `${narrativeText.substring(0, 150)}${narrativeText.length > 150 ? '...' : ''}`
-            : 'Analyse partielle - utilisez !rougepulseagent pour l\'analyse complète',
+            : "Analyse partielle - utilisez !rougepulseagent pour l'analyse complète",
           bot_signal: {
             action: botAction,
             confidence: botConfidence,
-            reason: 'Extrait de données tronquées'
+            reason: 'Extrait de données tronquées',
           },
           agent_state: {
             market_regime: 'PARTIAL_DATA',
             volatility_alert: true,
-            sentiment_score: 0
+            sentiment_score: 0,
           },
           high_impact_events: [],
           technical_levels: technicalLevels,
           sp500_price: sp500Data,
           partial_data: true,
-          note: 'Données extraites d\'une réponse JSON tronquée par l\'IA',
+          note: "Données extraites d'une réponse JSON tronquée par l'IA",
         };
 
-        console.log(`[${this.agentName}] ✅ Extraction partielle réussie - Score: ${partialData.impact_score}, Narrative: ${partialData.market_narrative.length} chars`);
+        console.log(
+          `[${this.agentName}] ✅ Extraction partielle réussie - Score: ${partialData.impact_score}, Narrative: ${partialData.market_narrative.length} chars`
+        );
         return partialData;
       }
 
-      console.log(`[${this.agentName}] ⚠️ Aucune donnée significative trouvée dans le JSON tronqué`);
+      console.log(
+        `[${this.agentName}] ⚠️ Aucune donnée significative trouvée dans le JSON tronqué`
+      );
       return null;
     } catch (e) {
       console.warn(`[${this.agentName}] Partial data extraction failed:`, e);

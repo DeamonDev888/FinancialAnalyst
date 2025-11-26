@@ -2,11 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const RougePulseAgent_1 = require("../agents/RougePulseAgent");
 async function testRougePulseEnhanced() {
-    console.log('🚀 Test de l\'agent RougePulse amélioré avec données S&P 500 et niveaux techniques...\n');
+    console.log("🚀 Test de l'agent RougePulse amélioré avec données S&P 500 et niveaux techniques...\n");
     const agent = new RougePulseAgent_1.RougePulseAgent();
     try {
         // Lancer l'analyse complète
-        console.log('🔍 Démarrage de l\'analyse économique et technique...');
+        console.log("🔍 Démarrage de l'analyse économique et technique...");
         const analysisResult = await agent.analyzeEconomicEvents();
         if ('error' in analysisResult) {
             console.log('❌ Erreur:', analysisResult.error);
@@ -14,7 +14,7 @@ async function testRougePulseEnhanced() {
         }
         // Convertir en TestResult pour le typage
         const testResult = analysisResult;
-        console.log('\n📊 RÉSULTATS DE L\'ANALYSE:');
+        console.log("\n📊 RÉSULTATS DE L'ANALYSE:");
         console.log('='.repeat(60));
         // Afficher les données S&P 500
         if (testResult.sp500_data) {
@@ -66,7 +66,8 @@ async function testRougePulseEnhanced() {
                 if (analysis.technical_edge_analysis.current_position) {
                     console.log(`Position actuelle: ${analysis.technical_edge_analysis.current_position}`);
                 }
-                if (analysis.technical_edge_analysis.key_levels && analysis.technical_edge_analysis.key_levels.length > 0) {
+                if (analysis.technical_edge_analysis.key_levels &&
+                    analysis.technical_edge_analysis.key_levels.length > 0) {
                     console.log('\nNiveaux clés identifiés:');
                     analysis.technical_edge_analysis.key_levels.forEach((level, index) => {
                         console.log(`  ${index + 1}. ${level.level || 'N/A'} (${level.type || 'N/A'}) - Edge: ${level.edge_score || 'N/A'}/100`);
@@ -77,7 +78,7 @@ async function testRougePulseEnhanced() {
                 }
             }
             if (analysis.asset_analysis) {
-                console.log('\n🎯 Analyse d\'Actifs:');
+                console.log("\n🎯 Analyse d'Actifs:");
                 if (analysis.asset_analysis.ES_Futures) {
                     const es = analysis.asset_analysis.ES_Futures;
                     console.log(`  ES Futures: ${es.bias || 'N/A'}`);
@@ -107,10 +108,10 @@ async function testRougePulseEnhanced() {
             }
         }
         console.log('\n✅ Test terminé avec succès!');
-        console.log('\n🎉 L\'agent RougePulse est maintenant capable de:');
+        console.log("\n🎉 L'agent RougePulse est maintenant capable de:");
         console.log('  • Récupérer les prix S&P 500 en temps réel');
         console.log('  • Analyser les niveaux de support/résistance depuis les news');
-        console.log('  • Calculer des scores d\'edge trading');
+        console.log("  • Calculer des scores d'edge trading");
         console.log('  • Identifier les niveaux psychologiques ronds');
         console.log('  • Fournir une analyse probabiliste et non déterministe');
         console.log('  • Préparer les niveaux pour la prochaine séance');

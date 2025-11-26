@@ -13,7 +13,9 @@ async function testSP500() {
     console.log(`\n   Test avec symbole: ${symbol}`);
     const testData = await finnhubClient.fetchQuote(symbol);
     if (testData) {
-      console.log(`   ✅ S&P 500 (${symbol}): ${testData.current} (${testData.change > 0 ? '+' : ''}${testData.percent_change}%)`);
+      console.log(
+        `   ✅ S&P 500 (${symbol}): ${testData.current} (${testData.change > 0 ? '+' : ''}${testData.percent_change}%)`
+      );
       break; // Arrêter si on trouve un symbole qui fonctionne
     } else {
       console.log(`   ❌ Échec avec ${symbol}`);
@@ -27,10 +29,17 @@ async function testSP500() {
 
   if (indicesData.length > 0) {
     indicesData.forEach((index: any) => {
-      const indexName = index.symbol === '^GSPC' ? 'S&P 500' :
-                       index.symbol === '^DJI' ? 'Dow Jones' :
-                       index.symbol === '^IXIC' ? 'NASDAQ' : index.symbol;
-      console.log(`✅ ${indexName} (${index.symbol}): ${index.current} (${index.change > 0 ? '+' : ''}${index.percent_change}%)`);
+      const indexName =
+        index.symbol === '^GSPC'
+          ? 'S&P 500'
+          : index.symbol === '^DJI'
+            ? 'Dow Jones'
+            : index.symbol === '^IXIC'
+              ? 'NASDAQ'
+              : index.symbol;
+      console.log(
+        `✅ ${indexName} (${index.symbol}): ${index.current} (${index.change > 0 ? '+' : ''}${index.percent_change}%)`
+      );
     });
   } else {
     console.log('❌ Échec de la récupération des indices multiples');
@@ -41,7 +50,9 @@ async function testSP500() {
   const appleData = await finnhubClient.fetchQuote('AAPL');
 
   if (appleData) {
-    console.log(`✅ Apple: ${appleData.current} (${appleData.change > 0 ? '+' : ''}${appleData.percent_change}%)`);
+    console.log(
+      `✅ Apple: ${appleData.current} (${appleData.change > 0 ? '+' : ''}${appleData.percent_change}%)`
+    );
   } else {
     console.log('❌ Échec de la récupération des données Apple');
   }

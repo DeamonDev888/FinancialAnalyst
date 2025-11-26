@@ -7,7 +7,16 @@ exports.BinanceScraper = void 0;
 const axios_1 = __importDefault(require("axios"));
 class BinanceScraper {
     baseUrl = 'https://api.binance.com/api/v3';
-    targetSymbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'AVAXUSDT'];
+    targetSymbols = [
+        'BTCUSDT',
+        'ETHUSDT',
+        'SOLUSDT',
+        'BNBUSDT',
+        'XRPUSDT',
+        'ADAUSDT',
+        'DOGEUSDT',
+        'AVAXUSDT',
+    ];
     constructor() { }
     /**
      * Fetch 24hr ticker data for target symbols

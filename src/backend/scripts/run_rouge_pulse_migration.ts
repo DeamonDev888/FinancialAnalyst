@@ -32,11 +32,14 @@ async function runMigration() {
       const trimmedLine = line.trim();
 
       // Ignorer les commentaires et lignes vides
-      if (trimmedLine.startsWith('--') || trimmedLine === '' ||
-          trimmedLine.startsWith('Message de confirmation') ||
-          trimmedLine.startsWith('SELECT') ||
-          trimmedLine.startsWith('Vérifier la structure') ||
-          trimmedLine.includes('status')) {
+      if (
+        trimmedLine.startsWith('--') ||
+        trimmedLine === '' ||
+        trimmedLine.startsWith('Message de confirmation') ||
+        trimmedLine.startsWith('SELECT') ||
+        trimmedLine.startsWith('Vérifier la structure') ||
+        trimmedLine.includes('status')
+      ) {
         continue;
       }
 
@@ -66,9 +69,13 @@ async function runMigration() {
       for (let i = 0; i < queries.length; i++) {
         const query = queries[i];
 
-        if (query.toLowerCase().includes('alter table') ||
-            query.toLowerCase().includes('create index')) {
-          console.log(`🔄 Exécution de la requête ${i + 1}/${queries.length}: ${query.substring(0, 50)}...`);
+        if (
+          query.toLowerCase().includes('alter table') ||
+          query.toLowerCase().includes('create index')
+        ) {
+          console.log(
+            `🔄 Exécution de la requête ${i + 1}/${queries.length}: ${query.substring(0, 50)}...`
+          );
 
           try {
             await client.query(query);
@@ -104,7 +111,9 @@ async function runMigration() {
       structureResult.rows.forEach((row, index) => {
         const nullable = row.is_nullable === 'YES' ? 'NULL' : 'NOT NULL';
         const defaultValue = row.column_default ? ` DEFAULT ${row.column_default}` : '';
-        console.log(`${index + 1}. ${row.column_name.padEnd(20)} | ${row.data_type.padEnd(15)} | ${nullable}${defaultValue}`);
+        console.log(
+          `${index + 1}. ${row.column_name.padEnd(20)} | ${row.data_type.padEnd(15)} | ${nullable}${defaultValue}`
+        );
       });
 
       console.log('\n🎉 Migration terminée avec succès !');
@@ -116,11 +125,9 @@ async function runMigration() {
       console.log('  • market_regime: Régime de marché');
       console.log('  • sentiment_score: Score de sentiment -100 à 100');
       console.log('  • agent_message: Message pour autres agents');
-
     } finally {
       client.release();
     }
-
   } catch (error) {
     console.error('❌ Erreur lors de la migration:', error);
     throw error;

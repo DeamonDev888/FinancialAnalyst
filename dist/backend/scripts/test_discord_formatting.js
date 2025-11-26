@@ -7,46 +7,46 @@ function convertToFrenchIfNeeded(text) {
         return text;
     // Mots clés anglais à remplacer par leurs équivalents français
     const translations = {
-        'bullish': 'haussier',
-        'bearish': 'baissier',
-        'neutral': 'neutre',
-        'support': 'support',
-        'resistance': 'résistance',
-        'breakout': 'cassure',
-        'trend': 'tendance',
-        'volatility': 'volatilité',
-        'inflation': 'inflation',
-        'recession': 'récession',
-        'data': 'données',
-        'report': 'rapport',
-        'forecast': 'prévisions',
-        'actual': 'réel',
-        'market': 'marché',
-        'stock': 'action',
-        'trading': 'trading',
-        'analysis': 'analyse',
-        'recommendation': 'recommandation',
-        'risk': 'risque',
-        'momentum': 'momentum',
-        'consumer': 'consommateur',
-        'spending': 'dépenses',
-        'economic': 'économique',
-        'session': 'séance',
-        'key': 'clé',
-        'level': 'niveau',
-        'price': 'prix',
-        'break': 'cassure',
-        'above': 'au-dessus',
-        'below': 'en-dessous',
-        'critical': 'critique',
-        'major': 'majeur',
-        'minor': 'mineur',
-        'high': 'élevé',
-        'low': 'bas',
-        'strong': 'fort',
-        'weak': 'faible',
-        'positive': 'positif',
-        'negative': 'négatif',
+        bullish: 'haussier',
+        bearish: 'baissier',
+        neutral: 'neutre',
+        support: 'support',
+        resistance: 'résistance',
+        breakout: 'cassure',
+        trend: 'tendance',
+        volatility: 'volatilité',
+        inflation: 'inflation',
+        recession: 'récession',
+        data: 'données',
+        report: 'rapport',
+        forecast: 'prévisions',
+        actual: 'réel',
+        market: 'marché',
+        stock: 'action',
+        trading: 'trading',
+        analysis: 'analyse',
+        recommendation: 'recommandation',
+        risk: 'risque',
+        momentum: 'momentum',
+        consumer: 'consommateur',
+        spending: 'dépenses',
+        economic: 'économique',
+        session: 'séance',
+        key: 'clé',
+        level: 'niveau',
+        price: 'prix',
+        break: 'cassure',
+        above: 'au-dessus',
+        below: 'en-dessous',
+        critical: 'critique',
+        major: 'majeur',
+        minor: 'mineur',
+        high: 'élevé',
+        low: 'bas',
+        strong: 'fort',
+        weak: 'faible',
+        positive: 'positif',
+        negative: 'négatif',
     };
     let frenchText = text;
     // Remplacer les termes anglais par les français (insensible à la casse)
@@ -72,9 +72,7 @@ function formatRougePulseMessage(data) {
         ? frenchNarrative.substring(0, maxNarrativeLength - 3) + '...'
         : frenchNarrative;
     const maxRecLength = 300;
-    const truncatedRec = frenchRec.length > maxRecLength
-        ? frenchRec.substring(0, maxRecLength - 3) + '...'
-        : frenchRec;
+    const truncatedRec = frenchRec.length > maxRecLength ? frenchRec.substring(0, maxRecLength - 3) + '...' : frenchRec;
     const message = `
 🔴 **RougePulse - Analyse Calendrier Éco**
 📊 **Impact Session :** ${score}/100
@@ -89,7 +87,7 @@ ${truncatedRec}
     console.log('Longueur totale:', message.length, 'caractères');
     console.log('Limite Discord (2000):', message.length <= 2000 ? '✅ OK' : '❌ Trop long');
     if (message.length > 2000) {
-        const ellipsis = '...\n\n📋 *Message tronqué - utilisez !rougepulseagent pour voir l\'analyse complète*';
+        const ellipsis = "...\n\n📋 *Message tronqué - utilisez !rougepulseagent pour voir l'analyse complète*";
         const cutoffPoint = 2000 - ellipsis.length;
         const truncatedMessage = message.substring(0, cutoffPoint) + ellipsis;
         console.log('Longueur après troncature:', truncatedMessage.length);
@@ -101,7 +99,7 @@ async function testDiscordFormatting() {
     console.log('🚀 Test du formatage Discord avec traduction française...\n');
     const agent = new RougePulseAgent_1.RougePulseAgent();
     try {
-        console.log('🔍 Lancement de l\'analyse RougePulse...');
+        console.log("🔍 Lancement de l'analyse RougePulse...");
         const result = await agent.analyzeEconomicEvents();
         if ('error' in result) {
             console.log('❌ Erreur:', result.error);

@@ -59,7 +59,8 @@ async function runMigration() {
         for (const line of lines) {
             const trimmedLine = line.trim();
             // Ignorer les commentaires et lignes vides
-            if (trimmedLine.startsWith('--') || trimmedLine === '' ||
+            if (trimmedLine.startsWith('--') ||
+                trimmedLine === '' ||
                 trimmedLine.startsWith('Message de confirmation') ||
                 trimmedLine.startsWith('SELECT') ||
                 trimmedLine.startsWith('Vérifier la structure') ||

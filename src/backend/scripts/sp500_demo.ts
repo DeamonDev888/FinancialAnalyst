@@ -11,7 +11,9 @@ async function demonstrateSP500Features() {
 
   if (sp500Data) {
     console.log(`✅ Prix actuel: ${sp500Data.current.toFixed(2)} USD`);
-    console.log(`📈 Variation: ${sp500Data.change > 0 ? '+' : ''}${sp500Data.change.toFixed(2)} (${sp500Data.percent_change > 0 ? '+' : ''}${sp500Data.percent_change.toFixed(2)}%)`);
+    console.log(
+      `📈 Variation: ${sp500Data.change > 0 ? '+' : ''}${sp500Data.change.toFixed(2)} (${sp500Data.percent_change > 0 ? '+' : ''}${sp500Data.percent_change.toFixed(2)}%)`
+    );
     console.log(`📊 Ouverture: ${sp500Data.open.toFixed(2)} USD`);
     console.log(`🔼 Plus haut: ${sp500Data.high.toFixed(2)} USD`);
     console.log(`🔽 Plus bas: ${sp500Data.low.toFixed(2)} USD`);
@@ -25,9 +27,12 @@ async function demonstrateSP500Features() {
 
   majorIndices.forEach(index => {
     const trend = index.data.change > 0 ? '📈' : index.data.change < 0 ? '📉' : '➡️';
-    const color = index.data.percent_change > 0 ? '🟢' : index.data.percent_change < 0 ? '🔴' : '⚪';
+    const color =
+      index.data.percent_change > 0 ? '🟢' : index.data.percent_change < 0 ? '🔴' : '⚪';
 
-    console.log(`${trend} ${index.name} (${index.data.symbol}): ${color} ${index.data.current.toFixed(2)} ${index.data.change > 0 ? '+' : ''}${index.data.percent_change.toFixed(2)}%`);
+    console.log(
+      `${trend} ${index.name} (${index.data.symbol}): ${color} ${index.data.current.toFixed(2)} ${index.data.change > 0 ? '+' : ''}${index.data.percent_change.toFixed(2)}%`
+    );
   });
 
   // Feature 3: Comparaison de performance
@@ -42,17 +47,27 @@ async function demonstrateSP500Features() {
     current.data.percent_change < worst.data.percent_change ? current : worst
   );
 
-  console.log(`🏆 Meilleur: ${bestPerformer.name} (+${bestPerformer.data.percent_change.toFixed(2)}%)`);
-  console.log(`📉 Pire: ${worstPerformer.name} (${worstPerformer.data.percent_change.toFixed(2)}%)`);
+  console.log(
+    `🏆 Meilleur: ${bestPerformer.name} (+${bestPerformer.data.percent_change.toFixed(2)}%)`
+  );
+  console.log(
+    `📉 Pire: ${worstPerformer.name} (${worstPerformer.data.percent_change.toFixed(2)}%)`
+  );
 
   // Feature 4: Données de marché additionnelles
   console.log('\n💹 Détails complets:');
   majorIndices.forEach(index => {
     console.log(`\n🔸 ${index.name}:`);
     console.log(`   • Prix: ${index.data.current.toFixed(2)} USD`);
-    console.log(`   • Variation: ${index.data.change > 0 ? '+' : ''}${index.data.change.toFixed(2)} USD`);
-    console.log(`   • Fourchette: ${index.data.low.toFixed(2)} - ${index.data.high.toFixed(2)} USD`);
-    console.log(`   • Écart: ${((index.data.high - index.data.low) / index.data.current * 100).toFixed(2)}%`);
+    console.log(
+      `   • Variation: ${index.data.change > 0 ? '+' : ''}${index.data.change.toFixed(2)} USD`
+    );
+    console.log(
+      `   • Fourchette: ${index.data.low.toFixed(2)} - ${index.data.high.toFixed(2)} USD`
+    );
+    console.log(
+      `   • Écart: ${(((index.data.high - index.data.low) / index.data.current) * 100).toFixed(2)}%`
+    );
   });
 
   console.log('\n✨ Données récupérées avec succès via Finnhub !');

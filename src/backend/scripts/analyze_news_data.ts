@@ -14,14 +14,6 @@ import { NewsDataProcessor } from '../data/NewsDataProcessor';
  * - npm run export:csv      -> Exporter en CSV
  */
 
-interface AnalysisOptions {
-  period: 'week' | 'month' | 'custom';
-  startDate?: string;
-  endDate?: string;
-  exportCSV?: boolean;
-  outputDir?: string;
-}
-
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];

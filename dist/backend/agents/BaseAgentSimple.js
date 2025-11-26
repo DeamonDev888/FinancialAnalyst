@@ -88,7 +88,7 @@ class BaseAgentSimple {
                 await fs.unlink(tempPromptPath);
                 console.log(`[${this.agentName}] Cleaned up temporary file`);
             }
-            catch (_cleanupError) {
+            catch {
                 // Ignorer les erreurs de nettoyage
             }
         }

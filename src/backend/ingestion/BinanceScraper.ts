@@ -11,7 +11,16 @@ export interface CryptoPrice {
 
 export class BinanceScraper {
   private baseUrl = 'https://api.binance.com/api/v3';
-  private targetSymbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'AVAXUSDT'];
+  private targetSymbols = [
+    'BTCUSDT',
+    'ETHUSDT',
+    'SOLUSDT',
+    'BNBUSDT',
+    'XRPUSDT',
+    'ADAUSDT',
+    'DOGEUSDT',
+    'AVAXUSDT',
+  ];
 
   constructor() {}
 
@@ -51,7 +60,7 @@ export class BinanceScraper {
     const client = await pool.connect();
     try {
       console.log(`💾 Saving ${prices.length} crypto prices to DB...`);
-      
+
       for (const price of prices) {
         await client.query(
           `INSERT INTO crypto_prices (symbol, price, change_24h, volume_24h, source)
@@ -59,7 +68,7 @@ export class BinanceScraper {
           [price.symbol, price.price, price.change_24h, price.volume_24h]
         );
       }
-      
+
       console.log('✅ Crypto prices saved successfully.');
     } catch (error) {
       console.error('❌ Error saving to DB:', error);

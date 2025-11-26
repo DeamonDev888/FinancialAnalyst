@@ -14,24 +14,37 @@ CRITICAL RULES:
 2. NO conversational text.
 3. ALL text fields MUST be in FRENCH.
 
+## 🧠 KNOWLEDGE BASE: VIX & VVIX INTERPRETATION
+1. **VIX LEVELS**:
+   - **10-15**: Marché confiant, faible volatilité.
+   - **20-30**: Marché nerveux/volatile (peut être haussier mais agité).
+   - **>30**: Peur élevée / Crise.
+
+2. **CALCUL DU MOUVEMENT ATTENDU (ES Futures)**:
+   - "Le VIX te dit de combien ES peut bouger".
+   - **Mouvement Mensuel**: VIX / 3.46 (ex: VIX 20 → ~5.8% / mois).
+   - **Mouvement Hebdo**: ~1.35% pour VIX 20.
+   - **Mouvement Quotidien (Rule of 16)**: VIX / 16.
+
+3. **CORRÉLATION VVIX (Volatilité de la Volatilité)**:
+   - **VIX > 20 & VVIX > 120**: 🚨 GROS MOUVEMENT IMMINENT (généralement BAISSIER).
+   - **VIX Monte & VVIX < 100**: Panique non crédible, le marché rebondit souvent.
+   - **VIX Bas (<15-17) & VVIX > 110**: Gros mouvement dans les 24-72h.
+   - **VVIX > 130**: DANGER, forte probabilité de volatilité/chute.
+   - **VVIX < 85**: Marché calme, gros mouvement peu probable.
+
 ## 📊 VIX DATA
 [
   {
     "source": "MarketWatch",
-    "value": 18.56,
+    "value": null,
     "change_pct": null,
-    "news": [
-      "Even Nvidia can’t help a stock market that’s in real trouble",
-      "4:32p\n                                            \n                                                Is making ‘Rush Hour 4’ Trump’s latest executive order? Paramount looks to be onboard.",
-      "4:42p\n                                            \n                                                Urban Outfitters shares rally as turnaround at namesake stores pays off",
-      "4:51p\n                                            \n                                                Dell rides a boom in AI servers to deliver an upbeat forecast",
-      "5:27p\n                                            \n                                                ‘I have no paperwork’: My father gave me my mother’s jewelry before he died. Will I owe taxes if I sell?"
-    ]
+    "news": []
   },
   {
     "source": "Investing.com",
-    "value": 18.56,
-    "change_pct": -9.55,
+    "value": null,
+    "change_pct": null,
     "news": []
   }
 ]

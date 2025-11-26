@@ -38,7 +38,7 @@ async function demonstrateSP500Features() {
         console.log(`   • Prix: ${index.data.current.toFixed(2)} USD`);
         console.log(`   • Variation: ${index.data.change > 0 ? '+' : ''}${index.data.change.toFixed(2)} USD`);
         console.log(`   • Fourchette: ${index.data.low.toFixed(2)} - ${index.data.high.toFixed(2)} USD`);
-        console.log(`   • Écart: ${((index.data.high - index.data.low) / index.data.current * 100).toFixed(2)}%`);
+        console.log(`   • Écart: ${(((index.data.high - index.data.low) / index.data.current) * 100).toFixed(2)}%`);
     });
     console.log('\n✨ Données récupérées avec succès via Finnhub !');
 }

@@ -101,13 +101,15 @@ class FinnhubClient {
                 return null;
             }
             // Récupérer aussi les métadonnées de base
-            const profileResponse = await axios_1.default.get(`${this.baseUrl}/stock/profile2`, {
+            await axios_1.default
+                .get(`${this.baseUrl}/stock/profile2`, {
                 params: {
                     symbol: symbol,
                     token: this.apiKey,
                 },
                 timeout: 3000,
-            }).catch(() => ({ data: { name: symbol } }));
+            })
+                .catch(() => ({ data: { name: symbol } }));
             const stockData = {
                 current: data.c, // Current price
                 change: data.d, // Change
@@ -132,7 +134,38 @@ class FinnhubClient {
      * Utilise l'ETF SPY qui suit l'indice S&P 500 (plus fiable que .SPX)
      */
     async fetchSP500Data() {
-        return this.fetchQuote('SPY');
+        // Tenter plusieurs symboles pour ES Futures
+        const esSymbols = ['ES1!', 'ES=F', 'ES', '/ES', 'MES1!']; // Différents symboles ES
+        for (const symbol of esSymbols) {
+            try {
+                const esData = await this.fetchQuote(symbol);
+                if (esData && esData.current > 5000) {
+                    console.log(`[Finnhub] ✅ Données ES Futures récupérées (${symbol}): ${esData.current.toFixed(2)}`);
+                    return esData;
+                }
+            }
+            catch {
+                console.log(`[Finnhub] Symbole ${symbol} non disponible, essai suivant...`);
+            }
+        }
+        // Si aucun symbole ES ne fonctionne, utiliser SPY et convertir en ES
+        console.warn(`[Finnhub] Aucun symbole ES disponible, utilisation de SPY avec conversion`);
+        const spyData = await this.fetchQuote('SPY');
+        if (spyData) {
+            // Conversion SPY -> ES Futures (approximation: ES ≈ SPY × 9-10)
+            const multiplier = 9.5; // Ratio moyen ES/SPY
+            return {
+                ...spyData,
+                current: Math.round(spyData.current * multiplier * 100) / 100,
+                high: Math.round(spyData.high * multiplier * 100) / 100,
+                low: Math.round(spyData.low * multiplier * 100) / 100,
+                open: Math.round(spyData.open * multiplier * 100) / 100,
+                previous_close: Math.round(spyData.previous_close * multiplier * 100) / 100,
+                change: Math.round(spyData.change * multiplier * 100) / 100,
+                symbol: 'ES_CONVERTED',
+            };
+        }
+        return null;
     }
     /**
      * Récupère les données de plusieurs indices populaires en parallèle
@@ -160,7 +193,7 @@ class FinnhubClient {
         const results = await this.fetchMultipleIndices(indicesMapping.map(i => i.symbol));
         return results.map((data, index) => ({
             name: indicesMapping[index].name,
-            data: data
+            data: data,
         }));
     }
 }

@@ -155,7 +155,7 @@ async function checkPlaywrightInstallation() {
             console.log('✅ Browser Chromium fonctionnel');
         }
         catch (_error) {
-            console.error('❌ Erreur browser: vérifiez l\'installation de Playwright');
+            console.error("❌ Erreur browser: vérifiez l'installation de Playwright");
             console.log('💡 Solution: npx playwright install');
             return false;
         }

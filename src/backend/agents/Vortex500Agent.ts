@@ -348,9 +348,9 @@ RULES:
     try {
       // Nettoyer les séquences ANSI
       const cleanOutput = stdout
-        .replace(/\u001b\[[0-9;]*m/g, '') // Remove ANSI color codes
-        .replace(/\u001b\[[0-9;]*[A-Z]/g, '') // Remove ANSI control sequences
-        .replace(/\u001b\[.*?[A-Za-z]/g, ''); // Remove all remaining ANSI sequences
+        .replace(/\\x1b\[[0-9;]*m/g, '') // Remove ANSI color codes
+        .replace(/\\x1b\[[0-9;]*[A-Z]/g, '') // Remove ANSI control sequences
+        .replace(/\\x1b\[.*?[A-Za-z]/g, ''); // Remove all remaining ANSI sequences
 
       // Parser NDJSON
       const lines = cleanOutput.split('\n').filter(line => line.trim() !== '');
@@ -378,7 +378,7 @@ RULES:
             const parsed = this.extractJsonFromContent(event.content);
             if (parsed) return this.validateSentimentResult(parsed);
           }
-        } catch (_parseError) {
+        } catch {
           // Ignorer les lignes non-JSON
         }
       }
@@ -413,7 +413,7 @@ RULES:
       if (match) {
         try {
           return JSON.parse(match[0]);
-        } catch (_jsonError) {
+        } catch {
           continue;
         }
       }
@@ -464,7 +464,8 @@ RULES:
             .filter((c: unknown) => typeof c === 'string')
             .slice(0, 5)
         : [],
-      summary: typeof override.summary === 'string' ? override.summary : 'Aucune analyse disponible',
+      summary:
+        typeof override.summary === 'string' ? override.summary : 'Aucune analyse disponible',
     };
   }
 }

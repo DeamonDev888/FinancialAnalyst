@@ -31,7 +31,188 @@ export class VixombreAgent extends BaseAgentSimple {
   }
 
   async analyzeVixStructure(): Promise<Record<string, unknown> | { error: string }> {
-    console.log(`[${this.agentName}] Starting VIX Web Scraping & Analysis...`);
+    console.log(`[${this.agentName}] Starting VIX Database Analysis (inspired by Vortex500)...`);
+
+    try {
+      // 1. Tester la connexion à la base de données
+      const dbConnected = await this.testDatabaseConnection();
+
+      if (!dbConnected) {
+        console.log(`[${this.agentName}] Database not connected - trying scraping fallback`);
+        return this.performScrapingFallback();
+      }
+
+      console.log(`[${this.agentName}] Using DATABASE-FIRST mode`);
+
+      // 2. Essayer d'obtenir les données VIX depuis la base de données
+      const vixData = await this.getVixDataFromDatabase();
+
+      if (vixData && vixData.length > 0) {
+        console.log(`[${this.agentName}] Found ${vixData.length} VIX records in DATABASE`);
+        return this.performDatabaseAnalysis(vixData);
+      }
+
+      console.log(`[${this.agentName}] No VIX data in database - scraping fresh data`);
+      return this.performScrapingFallback();
+    } catch (error) {
+      console.error(`[${this.agentName}] Analysis failed:`, error);
+      return {
+        error: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Test la connexion à la base de données
+   */
+  private async testDatabaseConnection(): Promise<boolean> {
+    try {
+      const client = await this.pool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      return true;
+    } catch (error) {
+      console.error(`[${this.agentName}] Database connection failed:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Récupère les données VIX depuis la base de données
+   */
+  private async getVixDataFromDatabase(): Promise<any[]> {
+    try {
+      const query = `
+        SELECT
+          source,
+          value,
+          change_abs,
+          change_pct,
+          previous_close,
+          open,
+          high,
+          low,
+          last_update,
+          created_at
+        FROM vix_data
+        WHERE created_at >= NOW() - INTERVAL '2 hours'
+        ORDER BY created_at DESC
+        LIMIT 10
+      `;
+
+      const result = await this.pool.query(query);
+      return result.rows;
+    } catch (error) {
+      console.error(`[${this.agentName}] Error getting VIX data from database:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Analyse avec les données de la base de données
+   */
+  private async performDatabaseAnalysis(vixData: any[]): Promise<Record<string, unknown>> {
+    console.log(
+      `[${this.agentName}] Performing analysis with ${vixData.length} database records...`
+    );
+
+    // Calculer la valeur consensus
+    const validValues = vixData.filter(r => r.value !== null).map(r => parseFloat(r.value));
+
+    const consensusValue =
+      validValues.length > 0 ? validValues.reduce((a, b) => a + b, 0) / validValues.length : 0;
+
+    // Analyser les changements
+    const validChanges = vixData
+      .filter(r => r.change_pct !== null)
+      .map(r => parseFloat(r.change_pct));
+
+    const avgChange =
+      validChanges.length > 0 ? validChanges.reduce((a, b) => a + b, 0) / validChanges.length : 0;
+
+    // Déterminer le tendance et le régime
+    const trend = avgChange < -0.5 ? 'BEARISH' : avgChange > 0.5 ? 'BULLISH' : 'NEUTRAL';
+    const regime = consensusValue > 30 ? 'CRISIS' : consensusValue > 20 ? 'ELEVATED' : 'NORMAL';
+    const riskLevel = consensusValue > 25 ? 'HIGH' : consensusValue > 15 ? 'MEDIUM' : 'LOW';
+
+    // Créer le résultat
+    const result = {
+      metadata: {
+        analysis_timestamp: new Date().toISOString(),
+        markets_status: this.determineMarketStatus(),
+        sources_scraped: 0,
+        sources_failed: [],
+        analysis_type: 'DATABASE_VOLATILITY_ANALYSIS',
+        data_source: 'database',
+        record_count: vixData.length,
+      },
+      current_vix_data: {
+        consensus_value: parseFloat(consensusValue.toFixed(2)),
+        trend: trend,
+        sources: vixData.map(r => ({
+          source: r.source,
+          value: r.value,
+          change_abs: r.change_abs,
+          change_pct: r.change_pct,
+          last_update: r.last_update,
+        })),
+      },
+      expert_volatility_analysis: {
+        current_vix: parseFloat(consensusValue.toFixed(2)),
+        vix_trend: trend,
+        volatility_regime: regime,
+        sentiment: trend === 'BEARISH' ? 'NEGATIVE' : trend === 'BULLISH' ? 'POSITIVE' : 'NEUTRAL',
+        sentiment_score: Math.round(avgChange * 10),
+        risk_level: riskLevel,
+        catalysts: [
+          'Analyse basée sur données récentes',
+          consensusValue > 25 ? 'Volatilité élevée détectée' : 'Volatilité normale',
+          avgChange > 0 ? 'Pression haussière' : avgChange < 0 ? 'Pression baissière' : 'Stabilité',
+        ],
+        technical_signals: {
+          signal_strength: consensusValue > 20 ? 'HIGH' : 'MEDIUM',
+          direction: trend.toLowerCase(),
+        },
+        market_implications: {
+          es_futures_bias:
+            trend === 'BEARISH' ? 'BEARISH' : trend === 'BULLISH' ? 'BULLISH' : 'NEUTRAL',
+          sp500_impact: consensusValue > 25 ? 'HIGH_VOLATILITY_EXPECTED' : 'NORMAL_CONDITIONS',
+        },
+        expert_summary: `Analyse VIX basée sur ${vixData.length} enregistrements récents. VIX actuel: ${consensusValue.toFixed(2)}, tendance: ${trend}, régime: ${regime}.`,
+        key_insights: [
+          `VIX consensus: ${consensusValue.toFixed(2)}`,
+          `Tendance: ${trend}`,
+          `Régime de volatilité: ${regime}`,
+          `Niveau de risque: ${riskLevel}`,
+        ],
+        trading_recommendations: {
+          strategy:
+            consensusValue > 25 ? 'DEFENSIVE' : consensusValue < 15 ? 'AGGRESSIVE' : 'NEUTRAL',
+          target_vix_levels: [15, 25, 30],
+        },
+      },
+      historical_context: {
+        comparison_5day: null,
+        comparison_20day: null,
+        volatility_trend: avgChange > 0 ? 'RISING' : avgChange < 0 ? 'FALLING' : 'STABLE',
+        key_levels: {
+          support: consensusValue > 20 ? 20 : 15,
+          resistance: consensusValue < 25 ? 25 : 30,
+        },
+      },
+    };
+
+    // Sauvegarder l'analyse dans la base de données
+    await this.saveAnalysisToDatabase(result);
+
+    return result;
+  }
+
+  /**
+   * Fallback: Scraper les données si la base de données est vide
+   */
+  private async performScrapingFallback(): Promise<Record<string, unknown> | { error: string }> {
+    console.log(`[${this.agentName}] Using SCRAPING FALLBACK mode...`);
 
     try {
       // 1. Scrape Data
@@ -45,7 +226,7 @@ export class VixombreAgent extends BaseAgentSimple {
 
       console.log(`[${this.agentName}] Scraped ${successCount} sources successfully.`);
 
-      // 1b. Save to Database
+      // 2. Save to Database
       await this.scraper.saveToDatabase(this.pool, scrapeResults);
 
       // 2. Prepare Data for AI
@@ -73,13 +254,7 @@ export class VixombreAgent extends BaseAgentSimple {
             : 0;
 
         // Calculate High/Low spread from available data
-        const highs = scrapeResults.filter(r => r.high !== null).map(r => r.high as number);
-        const lows = scrapeResults.filter(r => r.low !== null).map(r => r.low as number);
-        const maxHigh = highs.length > 0 ? Math.max(...highs) : 0;
-        const minLow = lows.length > 0 ? Math.min(...lows) : 0;
-        const _spread = maxHigh && minLow ? maxHigh - minLow : 0;
-
-        const _headlines = scrapeResults.flatMap((r: VixScrapeResult) => r.news_headlines);
+        scrapeResults.flatMap((r: VixScrapeResult) => r.news_headlines);
 
         aiAnalysis = {
           volatility_analysis: {
@@ -176,14 +351,34 @@ export class VixombreAgent extends BaseAgentSimple {
     }
   }
 
+  /**
+   * Détermine le statut du marché
+   */
   private determineMarketStatus(): string {
     const now = new Date();
     const day = now.getDay();
     const hour = now.getHours();
 
-    if (day === 0 || day === 6) return `Clôture du vendredi (marchés fermés week-end)`;
-    if (hour < 9 || hour > 16) return `Marchés fermés (Hors séance)`;
-    return `Séance en cours`;
+    if (day === 0 || day === 6) return 'WEEKEND';
+    if (hour >= 14 && hour < 21) return 'MARKET_OPEN';
+    if (hour >= 12 && hour < 14) return 'PRE_MARKET';
+    return 'AFTER_HOURS';
+  }
+
+  /**
+   * Sauvegarde l'analyse dans la base de données
+   */
+  private async saveAnalysisToDatabase(analysis: Record<string, unknown>): Promise<void> {
+    try {
+      const query = `
+        INSERT INTO vix_analysis (analysis_data, created_at)
+        VALUES ($1, NOW())
+      `;
+      await this.pool.query(query, [JSON.stringify(analysis)]);
+      console.log(`[${this.agentName}] ✅ Analysis saved to database`);
+    } catch (error) {
+      console.error(`[${this.agentName}] Error saving analysis to database:`, error);
+    }
   }
 
   private createAnalysisPrompt(results: VixScrapeResult[]): string {
@@ -339,9 +534,9 @@ Analyze the data above and return ONLY the requested JSON.
 
     try {
       const clean = stdout
-        .replace(/\u001b\[[0-9;]*m/g, '')
-        .replace(/\u001b\[[0-9;]*[A-Z]/g, '')
-        .replace(/\u001b\[.*?[A-Za-z]/g, '');
+        .replace(/\\x1b\[[0-9;]*m/g, '')
+        .replace(/\\x1b\[[0-9;]*[A-Z]/g, '')
+        .replace(/\\x1b\[.*?[A-Za-z]/g, '');
 
       const lines = clean.split('\n').filter(line => line.trim() !== '');
       let finalJson = null;
@@ -367,7 +562,7 @@ Analyze the data above and return ONLY the requested JSON.
             const extracted = this.extractJsonFromContent(event.content);
             if (extracted) finalJson = extracted;
           }
-        } catch (_parseError) {
+        } catch {
           // Ignore JSON parsing errors
         }
       }
@@ -398,7 +593,7 @@ Analyze the data above and return ONLY the requested JSON.
         try {
           const jsonStr = match[1] || match[0];
           return JSON.parse(jsonStr);
-        } catch (_jsonError) {
+        } catch {
           continue;
         }
       }
@@ -528,22 +723,6 @@ Analyze the data above and return ONLY the requested JSON.
     if (recentAvg > olderAvg * 1.05) return 'BULLISH';
     if (recentAvg < olderAvg * 0.95) return 'BEARISH';
     return 'NEUTRAL';
-  }
-  private async saveAnalysisToDatabase(analysis: Record<string, unknown>): Promise<void> {
-    try {
-      const client = await this.pool.connect();
-      await client.query(
-        `
-                INSERT INTO vix_analyses (analysis_data)
-                VALUES ($1)
-            `,
-        [analysis]
-      );
-      client.release();
-      console.log(`[${this.agentName}] Analysis saved to database.`);
-    } catch (error) {
-      console.error(`[${this.agentName}] Failed to save analysis to DB:`, error);
-    }
   }
   private simplifyResults(results: VixScrapeResult[]): any[] {
     return results.map(r => ({

@@ -4,14 +4,17 @@ exports.VixPlaywrightScraper = void 0;
 const playwright_1 = require("playwright");
 class VixPlaywrightScraper {
     browser = null;
+    cache;
     metrics;
     constructor() {
+        this.cache = new Map();
         this.metrics = {
             totalRequests: 0,
             successfulRequests: 0,
             failedRequests: 0,
             averageResponseTime: 0,
             sourceMetrics: new Map(),
+            cacheHits: 0,
         };
     }
     async init() {
@@ -68,23 +71,74 @@ class VixPlaywrightScraper {
         });
         return page;
     }
-    async humanDelay(page, min = 100, max = 500) {
+    async humanDelay(page, min = 50, max = 200) {
         const delay = Math.random() * (max - min) + min;
         await page.waitForTimeout(delay);
+    }
+    getCacheKey(source) {
+        return `vix_${source}_${new Date().toDateString()}`;
+    }
+    isCacheValid(cacheEntry) {
+        return Date.now() - cacheEntry.timestamp < cacheEntry.ttl;
+    }
+    async getCachedData(source) {
+        const cacheKey = this.getCacheKey(source);
+        const cached = this.cache.get(cacheKey);
+        if (cached && this.isCacheValid(cached)) {
+            this.metrics.cacheHits++;
+            console.log(`💾 Cache HIT pour ${source} (${this.metrics.cacheHits} hits total)`);
+            return cached.data;
+        }
+        return null;
+    }
+    setCachedData(source, data, ttl = 5 * 60 * 1000) {
+        const cacheKey = this.getCacheKey(source);
+        this.cache.set(cacheKey, {
+            data,
+            timestamp: Date.now(),
+            ttl,
+        });
+        console.log(`💾 Cache SET pour ${source} (TTL: ${ttl / 1000}s)`);
+    }
+    async scrapeWithTimeout(source, scrapeFn, timeout = 10000) {
+        // Vérifier le cache d'abord
+        const cached = await this.getCachedData(source);
+        if (cached) {
+            return cached;
+        }
+        const startTime = Date.now();
+        try {
+            const result = await Promise.race([
+                scrapeFn(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout: ${source} scraping timeout`)), timeout)),
+            ]);
+            const responseTime = Date.now() - startTime;
+            if (result && typeof result === 'object' && result.value !== null) {
+                // Mettre en cache si succès (5 minutes TTL)
+                this.setCachedData(source, result, 5 * 60 * 1000); // 5 minutes
+            }
+            return result;
+        }
+        catch (error) {
+            console.warn(`⚠️ Erreur scraping ${source}:`, error instanceof Error ? error.message : error);
+            throw error;
+        }
     }
     async scrapeAll() {
         const startTime = Date.now();
         await this.init();
-        console.log('🚀 Démarrage scraping parallèle optimisé (sans Yahoo Finance)...');
-        // Parallelisation avec des contextes séparés pour éviter les blocages
-        const results = await Promise.allSettled([
-            this.scrapeWithMetrics('MarketWatch', () => this.scrapeMarketWatch()),
-            this.scrapeWithMetrics('Investing.com', () => this.scrapeInvesting()),
+        console.log('🚀 Démarrage scraping VIX ultra-rapide (2 sources + cache)...');
+        // Utiliser les timeouts et le cache
+        const primaryResults = await Promise.allSettled([
+            this.scrapeWithTimeout('MarketWatch', () => this.scrapeMarketWatch(), 8000),
+            this.scrapeWithTimeout('Investing.com', () => this.scrapeInvesting(), 8000),
         ]);
         await this.close();
         const totalTime = Date.now() - startTime;
         this.updateAverageResponseTime(totalTime);
-        const finalResults = results.map((result, index) => {
+        console.log(`📊 Métriques scraping - Total: ${totalTime}ms, Cache hits: ${this.metrics.cacheHits}/${this.metrics.totalRequests}`);
+        console.log(`   MarketWatch: ${this.metrics.sourceMetrics.get('MarketWatch')?.success ? '✅' : '❌'}, Investing.com: ${this.metrics.sourceMetrics.get('Investing.com')?.success ? '✅' : '❌'}`);
+        const finalResults = primaryResults.map((result, index) => {
             const sources = ['MarketWatch', 'Investing.com'];
             this.metrics.totalRequests++;
             if (result.status === 'fulfilled') {
@@ -182,6 +236,7 @@ class VixPlaywrightScraper {
             failedRequests: 0,
             averageResponseTime: 0,
             sourceMetrics: new Map(),
+            cacheHits: 0,
         };
     }
     async scrapeMarketWatch() {

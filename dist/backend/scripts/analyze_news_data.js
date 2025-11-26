@@ -2,6 +2,18 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const NewsDataManager_1 = require("../data/NewsDataManager");
 const NewsDataProcessor_1 = require("../data/NewsDataProcessor");
+/**
+ * SCRIPT: analyze_news_data.ts
+ *
+ * Script pour l'analyse et l'exploration des données de marché traitées.
+ *
+ * Commandes disponibles:
+ * - npm run analyze:week    -> Analyse des 7 derniers jours
+ * - npm run analyze:month   -> Analyse des 30 derniers jours
+ * - npm run data:dates      -> Voir les dates disponibles
+ * - npm run data:today      -> Résumé du jour
+ * - npm run export:csv      -> Exporter en CSV
+ */
 async function main() {
     const args = process.argv.slice(2);
     const command = args[0];

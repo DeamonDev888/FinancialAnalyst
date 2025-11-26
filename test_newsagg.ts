@@ -10,13 +10,13 @@ async function testNewsAggregator() {
     const [zeroHedge, cnbc, financialJuice] = await Promise.allSettled([
       aggregator.fetchZeroHedgeHeadlines(),
       aggregator.fetchCNBCMarketNews(),
-      aggregator.fetchFinancialJuice()
+      aggregator.fetchFinancialJuice(),
     ]);
 
     const results = [
       { source: 'ZeroHedge', result: zeroHedge },
       { source: 'CNBC', result: cnbc },
-      { source: 'FinancialJuice', result: financialJuice }
+      { source: 'FinancialJuice', result: financialJuice },
     ];
 
     console.log('\n📊 RESULTS:');
@@ -33,13 +33,13 @@ async function testNewsAggregator() {
       }
     });
 
-    const totalHeadlines = results.reduce((sum, { result }) =>
-      result.status === 'fulfilled' ? sum + result.value.length : sum, 0
+    const totalHeadlines = results.reduce(
+      (sum, { result }) => (result.status === 'fulfilled' ? sum + result.value.length : sum),
+      0
     );
 
     console.log(`\n📈 Total headlines collected: ${totalHeadlines}`);
     console.log('✅ NewsAggregator test completed successfully!');
-
   } catch (error) {
     console.error('❌ NewsAggregator test failed:', error);
   }

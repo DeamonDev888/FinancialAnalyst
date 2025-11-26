@@ -13,9 +13,7 @@ function formatRougePulseMessage(data) {
         : narrative;
     // Limite recommandation
     const maxRecLength = 300;
-    const truncatedRec = rec.length > maxRecLength
-        ? rec.substring(0, maxRecLength - 3) + '...'
-        : rec;
+    const truncatedRec = rec.length > maxRecLength ? rec.substring(0, maxRecLength - 3) + '...' : rec;
     const message = `
 🔴 **RougePulse - Analyse Calendrier Éco**
 📊 **Impact Session :** ${score}/100
@@ -31,7 +29,7 @@ ${truncatedRec}
     // Simulation de troncation avec mots coupés
     const maxDiscordLength = 2000;
     if (message.length > maxDiscordLength) {
-        const ellipsis = '...\n\n📋 *Message tronqué - utilisez !rougepulseagent pour voir l\'analyse complète*';
+        const ellipsis = "...\n\n📋 *Message tronqué - utilisez !rougepulseagent pour voir l'analyse complète*";
         const cutoffPoint = maxDiscordLength - ellipsis.length;
         let truncatedMessage = message.substring(0, cutoffPoint);
         // Éviter de couper un mot : chercher le dernier espace
@@ -98,9 +96,9 @@ async function testCorrections() {
     ];
     testCases.forEach((testCase, index) => {
         try {
-            const formattedDate = testCase.created_at ?
-                new Date(testCase.created_at).toLocaleString('fr-FR') :
-                'Date non disponible';
+            const formattedDate = testCase.created_at
+                ? new Date(testCase.created_at).toLocaleString('fr-FR')
+                : 'Date non disponible';
             console.log(`${index + 1}. ${testCase.name}: ${formattedDate}`);
         }
         catch (error) {
@@ -108,7 +106,7 @@ async function testCorrections() {
         }
     });
     // Test 3: Agent réel si possible
-    console.log('\n🤖 Test avec l\'agent réel:');
+    console.log("\n🤖 Test avec l'agent réel:");
     try {
         const agent = new RougePulseAgent_1.RougePulseAgent();
         const result = await agent.analyzeEconomicEvents();
@@ -119,7 +117,8 @@ async function testCorrections() {
             if (!discordMessage.includes('Invalid Date')) {
                 console.log('✅ Pas de "Invalid Date" trouvé');
             }
-            if (discordMessage.includes('Date non disponible') || discordMessage.match(/\d{2}\/\d{2}\/\d{4}/)) {
+            if (discordMessage.includes('Date non disponible') ||
+                discordMessage.match(/\d{2}\/\d{2}\/\d{4}/)) {
                 console.log('✅ Date correctement formatée');
             }
             const lastChars = discordMessage.slice(-50);
