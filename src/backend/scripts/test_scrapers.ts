@@ -116,5 +116,3 @@ if (require.main === module) {
 }
 
 export { testScrapers };
-
-

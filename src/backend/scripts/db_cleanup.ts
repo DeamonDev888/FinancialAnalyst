@@ -166,5 +166,3 @@ if (require.main === module) {
 }
 
 export { databaseCleanup };
-
-

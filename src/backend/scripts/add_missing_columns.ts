@@ -60,5 +60,3 @@ if (require.main === module) {
 }
 
 export { addMissingColumns };
-
-

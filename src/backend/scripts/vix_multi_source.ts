@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { EventEmitter } from 'events';
 
 const DATA_PATH = 'C:\\SierraChart\\Data\\';
 
@@ -176,5 +175,3 @@ console.log("\n💡 Le script continue de surveiller l'apparition des fichiers V
 console.log('   Arrêter avec Ctrl+C');
 
 export { vixData, foundFiles };
-
-

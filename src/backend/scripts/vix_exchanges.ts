@@ -321,5 +321,3 @@ export default SierraChartExchangeClient;
 if (require.main === module) {
   main();
 }
-
-

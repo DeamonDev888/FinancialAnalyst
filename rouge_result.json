@@ -1,25 +1,35 @@
 {
-  "events_analyzed": 36,
+  "events_analyzed": 80,
   "analysis": {
-    "impact_score": 35,
-    "market_narrative": "The economic data paints a mixed picture of a US economy showing signs of manufacturing weakness and moderating inflation pressures, potentially supporting a 'soft landing' narrative where growth slows without tipping into recession. The Dallas Fed Manufacturing Index's sharp deterioration signals ongoing challenges in the industrial sector, which could pressure corporate earnings and investor sentiment. However, the Nasdaq's strong rebound driven by AI stocks suggests tech optimism persists, buoyed by potential policy shifts like extended Obamacare subsidies and tariff discussions under the new administration. Market pundits are debating whether this confirms a reflationary trend with selective strength in equities, or if sticky inflation and regional manufacturing declines point to broader economic fragility. News headlines validate this duality: AI-driven gains contrast with deficit concerns in Europe and tariff uncertainties, creating a narrative of cautious optimism for risk assets amid geopolitical tensions like Ukraine peace talks.",
+    "impact_score": 65,
+    "market_narrative": "Les données économiques montrent un mélange de signaux : une inflation en PPI qui se refroidit légèrement, avec des ventes au détail en dessous des attentes et une activité manufacturière faible (indice Fed de Richmond à -15), suggérant une économie en ralentissement. Cela confirme une tendance vers un 'atterrissage en douceur' ou des craintes de récession, avec des marchés actions comme le Nasdaq en rebond grâce à l'IA, mais des indicateurs de consommation et de production qui inquiètent. Les nouvelles sur les plans de santé de Trump et les médicaments GLP-1 ajoutent de l'espoir pour la santé et les marchés biotech, mais l'ensemble pointe vers une volatilité modérée avec des risques baissiers si la Fed reste hawkish.",
     "high_impact_events": [
       {
-        "event": "Dallas Fed Manufacturing Index",
-        "actual_vs_forecast": "Actual -10.4 significantly worse than forecast -1 and previous -5.0, indicating deeper contraction.",
-        "significance": "This underscores persistent manufacturing weakness in a key regional economy, raising concerns about supply chain disruptions and broader industrial slowdown, which could foreshadow weaker Q4 GDP and pressure Fed rate cut expectations."
+        "event": "PPI MoM",
+        "actual_vs_forecast": "0.3% contre 0.5% prévu, en baisse par rapport à -0.1% précédent",
+        "significance": "Une inflation des prix à la production plus faible que prévu indique une pression inflationniste en baisse, ce qui pourrait encourager la Fed à réduire ses taux plus tôt, bénéfique pour les actifs risqués comme les actions et le Bitcoin."
+      },
+      {
+        "event": "Retail Sales MoM",
+        "actual_vs_forecast": "0.2% contre 0.3% prévu, en baisse par rapport à 0.6% précédent",
+        "significance": "Les ventes au détail décevantes signalent un ralentissement de la consommation, ce qui pourrait renforcer les craintes de récession et peser sur les marchés actions, tout en rendant le Bitcoin plus attractif comme valeur refuge."
+      },
+      {
+        "event": "Richmond Fed Manufacturing Index",
+        "actual_vs_forecast": "-15 contre -1 prévu, en baisse par rapport à -4 précédent",
+        "significance": "Un indice manufacturier très faible confirme une contraction sectorielle, alimentant les récits de récession et pouvant déclencher des ventes sur les marchés traditionnels, favorisant une fuite vers le Bitcoin."
       }
     ],
     "asset_analysis": {
       "ES_Futures": {
-        "bias": "BULLISH",
-        "reasoning": "The Nasdaq's best day since May, fueled by Alphabet's AI rebound, signals tech sector resilience and investor confidence in innovation-driven growth. Upcoming data like Retail Sales and PPI forecasts suggest moderating inflation, potentially allowing for continued equity gains if earnings hold up despite manufacturing headwinds."
+        "bias": "BEARISH",
+        "reasoning": "Les données sur les ventes au détail et l'activité manufacturière faibles suggèrent un ralentissement économique, ce qui pourrait peser sur les indices actions malgré le rebond du Nasdaq grâce à l'IA. Les investisseurs pourraient réduire l'exposition aux risques, impactant négativement l'ES."
       },
       "Bitcoin": {
         "bias": "BULLISH",
-        "reasoning": "As a risk-on asset, BTC benefits from tech optimism and potential Fed easing implied by bill auction yield declines. Manufacturing weakness could drive safe-haven flows, but the overall narrative of selective economic strength and policy uncertainties (e.g., tariffs) positions BTC as a hedge against inflation and geopolitical risks, especially with Ukraine peace talk hopes."
+        "reasoning": "En période d'incertitude économique et de craintes de récession, le Bitcoin agit souvent comme un actif refuge alternatif aux actions traditionnelles. La baisse de l'inflation PPI pourrait réduire la pression sur les taux, rendant le BTC plus attractif pour les investisseurs cherchant à se protéger contre l'inflation persistante."
       }
     },
-    "trading_recommendation": "Monitor the upcoming PPI and Retail Sales releases for confirmation of inflation moderation; if data beats forecasts, consider long positions in ES futures to capitalize on tech momentum. For BTC, watch for volatility around manufacturing data—buy dips if broader market sentiment holds, targeting support at recent lows amid AI-driven equity strength."
+    "trading_recommendation": "Surveiller les données de ventes au détail et d'emploi pour confirmer la tendance ; envisager une position longue sur Bitcoin si les indices manufacturiers restent faibles, tout en réduisant l'exposition aux actions ES en cas de confirmation de ralentissement économique. Utiliser des stops pour gérer la volatilité."
   }
 }

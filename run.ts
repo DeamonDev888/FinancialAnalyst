@@ -1,4 +1,4 @@
-import { SentimentAgentFinal } from './src/backend/agents/SentimentAgentFinal';
+import { Vortex500Agent } from './src/backend/agents/Vortex500Agent';
 import { VixombreAgent } from './src/backend/agents/VixombreAgent';
 import { NewsDatabaseService } from './src/backend/database/NewsDatabaseService';
 import { NewsAggregator, NewsItem } from './src/backend/ingestion/NewsAggregator';
@@ -22,14 +22,14 @@ dotenv.config();
  */
 
 class FinancialAnalystApp {
-    private sentimentAgent: SentimentAgentFinal;
+    private sentimentAgent: Vortex500Agent;
     private vixAgent: VixombreAgent;
     private dbService: NewsDatabaseService;
     private newsAggregator: NewsAggregator;
     private vixScraper: VixPlaywrightScraper;
 
     constructor() {
-        this.sentimentAgent = new SentimentAgentFinal();
+        this.sentimentAgent = new Vortex500Agent();
         this.vixAgent = new VixombreAgent();
         this.dbService = new NewsDatabaseService();
         this.newsAggregator = new NewsAggregator();

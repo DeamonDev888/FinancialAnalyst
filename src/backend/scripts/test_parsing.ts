@@ -42,5 +42,3 @@ if (sentimentMatch) {
 } else {
   console.log('Markdown fallback failed.');
 }
-
-

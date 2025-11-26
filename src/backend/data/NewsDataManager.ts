@@ -304,5 +304,3 @@ export class NewsDataManager {
     return finalPath;
   }
 }
-
-

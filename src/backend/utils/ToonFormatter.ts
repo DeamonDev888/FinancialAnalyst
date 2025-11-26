@@ -59,5 +59,3 @@ export class ToonFormatter {
     return output.trim();
   }
 }
-
-

@@ -763,5 +763,3 @@ export class VixPlaywrightScraper {
     return now;
   }
 }
-
-

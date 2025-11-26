@@ -429,5 +429,3 @@ export default SierraChartVIXPersistent;
 if (require.main === module) {
   main();
 }
-
-

@@ -3,9 +3,9 @@ import * as fs from 'fs';
 
 async function main() {
   console.log('🔴 Starting RougePulse Analysis...');
-  
+
   const agent = new RougePulseAgent();
-  
+
   try {
     const result = await agent.analyzeEconomicEvents();
     console.log('📊 Analysis Result saved to rouge_result.json');

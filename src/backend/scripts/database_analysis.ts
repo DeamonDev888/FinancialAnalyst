@@ -164,5 +164,3 @@ if (require.main === module) {
 }
 
 export { executeDatabaseAnalysis };
-
-

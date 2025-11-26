@@ -240,5 +240,3 @@ if (require.main === module) {
 }
 
 export { quickDatabaseAnalysis };
-
-

@@ -413,5 +413,3 @@ if (require.main === module) {
 }
 
 export { EnhancedVortex500Agent, testEnhancedAgent };
-
-

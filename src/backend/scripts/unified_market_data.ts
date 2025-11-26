@@ -231,10 +231,10 @@ class UnifiedMarketDataCollector extends EventEmitter {
       console.log(`⏰ ${new Date().toLocaleTimeString()} - Collecte des données`);
 
       // Collecter et stocker les données crypto
-      const cryptoData = this.collectCryptoData();
-      if (cryptoData.length > 0) {
-        console.log(`🪙 ${cryptoData.length} actifs crypto trouvés`);
-        for (const data of cryptoData) {
+      const _cryptoData = this.collectCryptoData();
+      if (_cryptoData.length > 0) {
+        console.log(`🪙 ${_cryptoData.length} actifs crypto trouvés`);
+        for (const data of _cryptoData) {
           await this.storeMarketData(data);
         }
       } else {
@@ -286,5 +286,3 @@ const collector = new UnifiedMarketDataCollector();
 collector.start().catch(console.error);
 
 export { UnifiedMarketDataCollector, MarketData };
-
-

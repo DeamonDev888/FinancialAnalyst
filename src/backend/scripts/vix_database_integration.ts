@@ -222,5 +222,3 @@ process.on('SIGINT', async () => {
 });
 
 export { VIXDatabaseIntegration, VIXData };
-
-

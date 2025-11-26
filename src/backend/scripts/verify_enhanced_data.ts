@@ -123,5 +123,3 @@ if (require.main === module) {
 }
 
 export { verifyEnhancedData };
-
-

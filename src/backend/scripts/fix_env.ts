@@ -18,9 +18,7 @@ try {
   );
 
   // Add them back cleanly
-  lines.push(
-    'DISCORD_TOKEN=YOUR_DISCORD_BOT_TOKEN'
-  );
+  lines.push('DISCORD_TOKEN=YOUR_DISCORD_BOT_TOKEN');
   lines.push('DISCORD_CHANNEL_ID='); // Placeholder
 
   // Join with proper newlines
@@ -33,5 +31,3 @@ try {
 } catch (e) {
   console.error('Error fixing .env:', e);
 }
-
-

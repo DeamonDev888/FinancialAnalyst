@@ -318,5 +318,3 @@ export default SierraChartDTCClient;
 if (require.main === module) {
   main();
 }
-
-

@@ -271,5 +271,3 @@ export default VIXSetupAndGetter;
 if (require.main === module) {
   main();
 }
-
-

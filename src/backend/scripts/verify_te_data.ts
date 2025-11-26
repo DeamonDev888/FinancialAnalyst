@@ -15,7 +15,7 @@ async function verifyData() {
   try {
     const client = await pool.connect();
     console.log('🔍 Verifying economic_events table...');
-    
+
     const res = await client.query(`
       SELECT event_date, country, event_name, importance, actual, forecast, previous 
       FROM economic_events 
@@ -24,14 +24,16 @@ async function verifyData() {
     `);
 
     console.log(`📊 Found ${res.rowCount} events in database.`);
-    console.table(res.rows.map(row => ({
+    console.table(
+      res.rows.map(row => ({
         Date: new Date(row.event_date).toLocaleString(),
         Country: row.country,
         Event: row.event_name,
         Imp: row.importance,
         Actual: row.actual,
-        Fcst: row.forecast
-    })));
+        Fcst: row.forecast,
+      }))
+    );
 
     client.release();
   } catch (err) {

@@ -77,9 +77,9 @@ export class VixombreAgent extends BaseAgentSimple {
         const lows = scrapeResults.filter(r => r.low !== null).map(r => r.low as number);
         const maxHigh = highs.length > 0 ? Math.max(...highs) : 0;
         const minLow = lows.length > 0 ? Math.min(...lows) : 0;
-        const spread = maxHigh && minLow ? maxHigh - minLow : 0;
+        const _spread = maxHigh && minLow ? maxHigh - minLow : 0;
 
-        const headlines = scrapeResults.flatMap((r: VixScrapeResult) => r.news_headlines);
+        const _headlines = scrapeResults.flatMap((r: VixScrapeResult) => r.news_headlines);
 
         aiAnalysis = {
           volatility_analysis: {
@@ -89,10 +89,10 @@ export class VixombreAgent extends BaseAgentSimple {
             sentiment: 'NEUTRAL',
             sentiment_score: 0,
             risk_level: avg > 20 ? 'HIGH' : 'MEDIUM',
-            catalysts: ['AI Analysis Unavailable', 'Market Data Only'],
+            catalysts: ['Analyse IA indisponible', 'Données de marché uniquement'],
             expert_summary:
-              'Automated fallback analysis. AI service was unavailable to provide detailed insights.',
-            key_insights: ['VIX data scraped successfully', 'Detailed AI analysis skipped'],
+              "Analyse de secours automatisée. Le service d'IA n'était pas disponible pour fournir des informations détaillées.",
+            key_insights: ['Données VIX récupérées avec succès', 'Analyse IA détaillée ignorée'],
             trading_recommendations: {
               strategy: 'NEUTRAL',
               target_vix_levels: [15, 25],
@@ -218,11 +218,11 @@ REQUIRED EXPERT ANALYSIS FORMAT:
     "sentiment": "EXTREME_FEAR|FEAR|NEUTRAL|GREED|EXTREME_GREED",
     "sentiment_score": number_between_-100_and_100,
     "risk_level": "CRITICAL|HIGH|MEDIUM|LOW",
-    "catalysts": ["List of 3-5 key volatility drivers from news"],
+    "catalysts": ["List of 3-5 key volatility drivers from news (IN FRENCH)"],
     "technical_signals": {
-      "vix_vs_mean": string,
-      "volatility_trend": string,
-      "pattern_recognition": string,
+      "vix_vs_mean": "string (IN FRENCH)",
+      "volatility_trend": "string (IN FRENCH)",
+      "pattern_recognition": "string (IN FRENCH)",
       "gap_analysis": "GAP_UP|GAP_DOWN|NONE",
       "intraday_range_analysis": "EXPANDING|CONTRACTING|STABLE"
     },
@@ -232,12 +232,12 @@ REQUIRED EXPERT ANALYSIS FORMAT:
       "confidence_level": number_between_0_100,
       "time_horizon": "INTRADAY|SWING|POSITIONAL"
     },
-    "expert_summary": "Professional volatility analysis summary (2-3 sentences)",
-    "key_insights": ["3-5 bullet points of actionable volatility insights"],
+    "expert_summary": "Professional volatility analysis summary (2-3 sentences) IN FRENCH",
+    "key_insights": ["3-5 bullet points of actionable volatility insights IN FRENCH"],
     "trading_recommendations": {
       "strategy": "VOLATILITY_BUY|VOLATILITY_SELL|NEUTRAL",
-      "entry_signals": ["Specific entry conditions"],
-      "risk_management": "Risk management advice",
+      "entry_signals": ["Specific entry conditions IN FRENCH"],
+      "risk_management": "Risk management advice IN FRENCH",
       "target_vix_levels": [min_target, max_target]
     }
   }
@@ -259,6 +259,7 @@ RULES:
 4. Base sentiment_score on: Negative = -50 to -100, Neutral = -49 to 49, Positive = 50 to 100.
 5. Include numerical VIX targets when providing recommendations.
 6. Consider both current conditions AND future volatility expectations.
+7. **IMPORTANT: ALL TEXT FIELDS (summary, insights, catalysts, recommendations) MUST BE IN FRENCH.**
 `;
   }
 
@@ -314,9 +315,9 @@ Analyze the data above and return ONLY the requested JSON.
 
     try {
       const clean = stdout
-        .replace(/\x1b\[[0-9;]*m/g, '')
-        .replace(/\x1b\[[0-9;]*[A-Z]/g, '')
-        .replace(/\x1b\[.*?[A-Za-z]/g, '');
+        .replace(/\u001b\[[0-9;]*m/g, '')
+        .replace(/\u001b\[[0-9;]*[A-Z]/g, '')
+        .replace(/\u001b\[.*?[A-Za-z]/g, '');
 
       const lines = clean.split('\n').filter(line => line.trim() !== '');
       let finalJson = null;
@@ -521,5 +522,3 @@ Analyze the data above and return ONLY the requested JSON.
     }
   }
 }
-
-

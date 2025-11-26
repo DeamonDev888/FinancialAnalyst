@@ -342,5 +342,3 @@ export default SierraChartVIXClient;
 if (require.main === module) {
   main().catch(console.error);
 }
-
-

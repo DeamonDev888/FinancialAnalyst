@@ -512,5 +512,3 @@ export default SierraChartDTCOptimized;
 if (require.main === module) {
   main();
 }
-
-

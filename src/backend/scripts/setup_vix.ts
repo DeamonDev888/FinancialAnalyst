@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as child_process from 'child_process';
-import { EventEmitter } from 'events';
 
 const SIERRA_CHART_PATH = 'C:\\SierraChart\\SierraChart_64.exe';
 const DATA_PATH = 'C:\\SierraChart\\Data\\';
@@ -101,5 +100,3 @@ function checkVixFiles() {
 // Vérifier immédiatement si des fichiers VIX existent déjà
 console.log('🔍 Vérification initiale des fichiers VIX...');
 checkVixFiles();
-
-

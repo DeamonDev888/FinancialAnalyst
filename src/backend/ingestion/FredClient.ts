@@ -90,5 +90,3 @@ export class FredClient {
     return results.filter((item): item is FredSeriesData => item !== null);
   }
 }
-
-

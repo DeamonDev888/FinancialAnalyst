@@ -761,5 +761,3 @@ export class NewsDatabaseService {
     }
   }
 }
-
-

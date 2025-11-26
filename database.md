@@ -10,7 +10,7 @@
 ## 📰 Database News Items (TOON Format)
 
 ```
-headlines[51]{title,src}:
+headlines[35]{title,src}:
   FinancialJuice: EU council formally adopts EU budget for 2026,FinancialJuice
   FinancialJuice: Trump: Full benefit of tariffs has not yet been calculated,FinancialJuice
   FinancialJuice: Trump: Is it really possible that big progress is being made in peace talks between Russia and Ukraine???,FinancialJuice
@@ -46,22 +46,6 @@ headlines[51]{title,src}:
   Geoengineering Is No Longer Just A Theory,ZeroHedge
   MTA Hunts For $675 Million Worth Of Loose Change In Subway Seat Cushions,ZeroHedge
   US State Department Designates "DEI" As A Violation Of Human Rights,ZeroHedge
-  U.S. stock futures gain ahead of Thanksgiving week — and the crucial holiday shopping season,Finnhub
-  Here’s what bitcoin and U.S. Treasurys have in common right now,Finnhub
-  "Google's new AI model puts OpenAI, the great conundrum of this market, on shakier ground",Finnhub
-  Bessent believes there won't be a recession in 2026 but says some sectors are challenged,Finnhub
-  Why the once-invincible Nvidia can’t save the AI trade,Finnhub
-  Trump: Democrats Urging Military To "Disobey My Orders" Have Committed A "Serious Crime",ZeroHedge
-  'Almost Every German City Is Now On The Verge Of Bankruptcy',ZeroHedge
-  "'Stakes are high.' With shutdown over, airlines predict record numbers of travelers this Thanksgiving",Finnhub
-  What It Takes To Be Rich In Europe,ZeroHedge
-  A U.S.-China trade truce means more localized technology. How to play it,CNBC
-  Brussels' Internet Neo-Feudalism: Sledgehammer Or Stiletto?,ZeroHedge
-  Is Global Technocracy Inevitable Or Dangerously Delusional?,ZeroHedge
-  These Are The Cities Americans Are Moving To,ZeroHedge
-  Central Bankers Disagree About Gold,ZeroHedge
-  "US To Launch "New Phase" Of Venezuela Operations, Options Include Overthrowing Maduro: Report",ZeroHedge
-  The Problem Of Fake Science,ZeroHedge
 ```
 
 ## 🤖 AI Analysis Instructions
@@ -74,15 +58,16 @@ CRITICAL:
 - Output ONLY the JSON object
 - No markdown, no explanations
 - Must be parseable by JSON.parse()
+- **IMPORTANT: The 'summary' and 'catalysts' fields MUST be in FRENCH.**
 
 REQUIRED JSON STRUCTURE:
 ```json
 {
   "sentiment": "BULLISH" | "BEARISH" | "NEUTRAL",
   "score": number between -100 and 100,
-  "catalysts": ["string", "string"],
+  "catalysts": ["string (en Français)", "string (en Français)"],
   "risk_level": "LOW" | "MEDIUM" | "HIGH",
-  "summary": "Brief explanation"
+  "summary": "Brief explanation in French"
 }
 ```
 
@@ -90,7 +75,8 @@ RULES:
 1. Analyze all headlines from database
 2. Return ONLY JSON
 3. No conversational text
+4. **WRITE IN FRENCH**
 
 ---
-*Generated: 2025-11-25T01:34:26.095Z*
+*Generated: 2025-11-25T23:48:23.646Z*
 *Buffer: database.md*

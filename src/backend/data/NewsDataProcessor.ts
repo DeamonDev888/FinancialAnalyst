@@ -417,5 +417,3 @@ export class NewsDataProcessor {
     }
   }
 }
-
-

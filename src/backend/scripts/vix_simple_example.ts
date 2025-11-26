@@ -97,5 +97,3 @@ export { getVIXSimple, getCurrentVIXPrice };
 if (require.main === module) {
   main();
 }
-
-

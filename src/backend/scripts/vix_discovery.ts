@@ -450,5 +450,3 @@ export default SierraChartSymbolDiscovery;
 if (require.main === module) {
   main();
 }
-
-

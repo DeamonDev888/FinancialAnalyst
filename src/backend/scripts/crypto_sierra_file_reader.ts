@@ -412,5 +412,3 @@ export default CryptoFileReader;
 if (require.main === module) {
   main();
 }
-
-

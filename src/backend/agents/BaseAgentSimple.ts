@@ -135,7 +135,7 @@ export abstract class BaseAgentSimple {
             return this.validateAndCleanJson(jsonInContent);
           }
         }
-      } catch (_parseError) {
+      } catch {
         // Ignorer les lignes non-JSON
       }
     }
@@ -160,7 +160,7 @@ export abstract class BaseAgentSimple {
 
     try {
       return JSON.parse(jsonMatch[0]);
-    } catch (_jsonError) {
+    } catch {
       return null;
     }
   }
@@ -203,9 +203,7 @@ export abstract class BaseAgentSimple {
       score: hasScore ? (parsedObj.score as number) : 0,
       risk_level: hasRiskLevel ? (parsedObj.risk_level as string).toUpperCase() : 'MEDIUM',
       catalysts: hasCatalysts ? (parsedObj.catalysts as string[]) : [],
-      summary: hasSummary ? (parsedObj.summary as string) : 'No summary available',
+      summary: hasSummary ? (parsedObj.summary as string) : 'Aucun résumé disponible',
     };
   }
 }
-
-

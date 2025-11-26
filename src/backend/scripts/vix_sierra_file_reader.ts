@@ -313,5 +313,3 @@ export default VIXFileReader;
 if (require.main === module) {
   main();
 }
-
-

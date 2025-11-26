@@ -22,7 +22,10 @@ async function main() {
       setTimeout(() => reject(new Error('Analysis timeout after 90 seconds')), 90000);
     });
 
-    const result = await Promise.race([analysisPromise, timeoutPromise]);
+    const result = (await Promise.race([analysisPromise, timeoutPromise])) as Record<
+      string,
+      unknown
+    >;
 
     console.log('\n✅ ANALYSIS COMPLETED!');
     console.log('='.repeat(50));
@@ -38,8 +41,8 @@ async function main() {
     if (result.risk_level) {
       console.log(`   Risk Level: ${result.risk_level}`);
     }
-    if (result.catalysts && result.catalysts.length > 0) {
-      console.log(`   Catalysts: ${result.catalysts.slice(0, 3).join(', ')}`);
+    if (result.catalysts && Array.isArray(result.catalysts) && result.catalysts.length > 0) {
+      console.log(`   Catalysts: ${(result.catalysts as string[]).slice(0, 3).join(', ')}`);
     }
     if (result.summary) {
       console.log(`   Summary: ${result.summary}`);
@@ -53,7 +56,7 @@ async function main() {
     console.log(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     console.log('Result: N/A (as requested - no simulated data)');
   } finally {
-    await agent.cleanup();
+    // No cleanup needed for Vortex500Agent
   }
 }
 
@@ -69,5 +72,3 @@ process.on('uncaughtException', error => {
 });
 
 main();
-
-

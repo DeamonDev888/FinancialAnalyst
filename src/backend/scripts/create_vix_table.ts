@@ -29,5 +29,3 @@ async function createTable() {
 }
 
 createTable();
-
-

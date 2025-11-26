@@ -49,7 +49,8 @@
     "test:scrapers": "ts-node src/backend/scripts/test_scrapers.ts",
     "test:playwright": "ts-node src/backend/scripts/test_playwright_vix.ts",
     "scrape:te": "ts-node src/backend/scripts/scrape_trading_economics.ts",
-    "rouge:pulse": "ts-node src/backend/scripts/run_rouge_pulse.ts"
+    "rouge:pulse": "ts-node src/backend/scripts/run_rouge_pulse.ts",
+    "scrape:crypto": "ts-node src/backend/scripts/scrape_binance.ts"
   },
   "keywords": [
     "trading",

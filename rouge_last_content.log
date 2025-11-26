@@ -1,0 +1,44 @@
+```json
+{
+  "impact_score": 65,
+  "market_narrative": "The economic data presents a mixed picture of cooling inflation pressures alongside weakening labor and manufacturing activity, suggesting a potential 'soft landing' scenario where growth slows without triggering recession, but risks of stagflation persist. PPI readings below forecasts indicate inflation is moderating, supporting Fed easing expectations, while ADP employment showed a sharp decline and Richmond Fed manufacturing plunged to -15, signaling labor market fragility and manufacturing contraction. Housing data is bifurcated—home prices decelerating but pending sales beating expectations, reflecting affordability challenges. Oil inventories drew down, potentially bullish for energy but mixed for inflation. Market news highlights AI-driven tech strength (Dell, Nasdaq rebound) and consumer resilience (Urban Outfitters), contrasting with housing market stress. This supports a narrative of selective growth in tech sectors while broader economy cools, validating 'soft landing' over immediate recession fears.",
+  "high_impact_events": [
+    {
+      "event": "ADP Employment Change Weekly",
+      "actual_vs_forecast": "Actual -13.5K vs previous -2.5K (forecast blank, but significantly worse than recent trend)",
+      "significance": "Sharp job losses signal labor market deterioration, raising recession risks and pressuring Fed to pause rate hikes, which could boost risk assets like BTC if easing accelerates."
+    },
+    {
+      "event": "PPI MoM",
+      "actual_vs_forecast": "Actual 0.3% vs forecast 0.5%",
+      "significance": "Below-expectation inflation cooling supports Fed pivot to cuts, easing monetary policy headwinds for equities and potentially lifting ES futures."
+    },
+    {
+      "event": "Pending Home Sales MoM",
+      "actual_vs_forecast": "Actual 1.9% vs forecast -0.4%",
+      "significance": "Strong beat indicates housing demand resilience despite affordability issues, countering recession narratives and supporting consumer spending optimism."
+    },
+    {
+      "event": "Richmond Fed Manufacturing Index",
+      "actual_vs_forecast": "Actual -15 vs forecast -1",
+      "significance": "Plunge to contraction territory highlights manufacturing weakness, amplifying recession concerns and pressuring industrial stocks in ES."
+    },
+    {
+      "event": "Monthly Budget Statement",
+      "actual_vs_forecast": "Actual $284B surplus vs forecast -$250.0B deficit",
+      "significance": "Unexpected surplus reduces fiscal drag fears, potentially allowing Fed more room for rate cuts and supporting risk appetite."
+    }
+  ],
+  "asset_analysis": {
+    "ES_Futures": {
+      "bias": "BULLISH",
+      "reasoning": "Inflation cooling (PPI below forecasts) and fiscal surplus alleviate policy tightening fears, while AI/tech strength (Dell, Nasdaq rebound) drives selective growth. Housing beats offset labor weakness, supporting 'soft landing' narrative over immediate downturn."
+    },
+    "Bitcoin": {
+      "bias": "BULLISH",
+      "reasoning": "BTC thrives on risk appetite and Fed easing; moderating inflation and surplus budget statement signal potential rate cuts, while tech/AI boom (cross-referenced with Dell and Nasdaq news) correlates with crypto inflows. Labor weakness is a headwind but secondary to monetary policy tailwinds."
+    }
+  },
+  "trading_recommendation": "Monitor upcoming durable goods orders and jobless claims for labor confirmation; consider long ES futures on PPI-driven easing signals, and accumulate BTC on AI/tech momentum. Avoid overexposure to manufacturing-heavy sectors until Richmond Fed data stabilizes."
+}
+```
