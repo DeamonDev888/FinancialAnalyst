@@ -1,4 +1,7 @@
-export class VixCboeScraper {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.VixCboeScraper = void 0;
+class VixCboeScraper {
     pool;
     constructor(pool) {
         this.pool = pool;
@@ -129,4 +132,5 @@ export class VixCboeScraper {
         }
     }
 }
+exports.VixCboeScraper = VixCboeScraper;
 //# sourceMappingURL=VixCboeScraper.js.map

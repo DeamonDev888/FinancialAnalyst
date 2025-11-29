@@ -1,7 +1,9 @@
 #!/usr/bin/env ts-node
-import { EnhancedNewsPipeline } from './enhanced_news_pipeline';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const enhanced_news_pipeline_1 = require("./enhanced_news_pipeline");
 console.log('🚀 Démarrage du Pipeline Amélioré...');
-const pipeline = new EnhancedNewsPipeline();
+const pipeline = new enhanced_news_pipeline_1.EnhancedNewsPipeline();
 pipeline
     .runPipeline()
     .then(result => {

@@ -1,10 +1,13 @@
-import { NewsDatabaseService } from '../database/NewsDatabaseService';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.updateSchema = updateSchema;
+const NewsDatabaseService_1 = require("../database/NewsDatabaseService");
 /**
  * Script pour mettre à jour le schéma de la base de données avec les nouveaux champs
  */
 async function updateSchema() {
     console.log('🔄 Mise à jour du schéma de la base de données...');
-    const dbService = new NewsDatabaseService();
+    const dbService = new NewsDatabaseService_1.NewsDatabaseService();
     try {
         // Test de connexion
         const connected = await dbService.testConnection();
@@ -34,5 +37,4 @@ async function updateSchema() {
 if (require.main === module) {
     updateSchema().catch(console.error);
 }
-export { updateSchema };
 //# sourceMappingURL=update_schema.js.map

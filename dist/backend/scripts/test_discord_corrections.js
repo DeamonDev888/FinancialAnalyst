@@ -1,4 +1,6 @@
-import { RougePulseAgent } from '../agents/RougePulseAgent';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const RougePulseAgent_1 = require("../agents/RougePulseAgent");
 // Simulation de la fonction corrigée
 function formatRougePulseMessage(data) {
     const narrative = data.market_narrative || 'Pas de narratif disponible.';
@@ -106,7 +108,7 @@ async function testCorrections() {
     // Test 3: Agent réel si possible
     console.log("\n🤖 Test avec l'agent réel:");
     try {
-        const agent = new RougePulseAgent();
+        const agent = new RougePulseAgent_1.RougePulseAgent();
         const result = await agent.analyzeMarketSentiment();
         if (!('error' in result) && result.analysis) {
             const discordMessage = formatRougePulseMessage(result.analysis);

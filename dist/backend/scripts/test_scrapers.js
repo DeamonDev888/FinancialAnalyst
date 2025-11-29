@@ -1,8 +1,11 @@
 #!/usr/bin/env ts-node
-import { VixPlaywrightScraper } from '../ingestion/VixPlaywrightScraper';
-import { NewsAggregator } from '../ingestion/NewsAggregator';
-import { Pool } from 'pg';
-const pool = new Pool({
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.testScrapers = testScrapers;
+const VixPlaywrightScraper_1 = require("../ingestion/VixPlaywrightScraper");
+const NewsAggregator_1 = require("../ingestion/NewsAggregator");
+const pg_1 = require("pg");
+const pool = new pg_1.Pool({
     host: 'localhost',
     port: 5432,
     database: 'financial_analyst',
@@ -11,8 +14,8 @@ const pool = new Pool({
 });
 async function testScrapers() {
     console.log('🧪 TEST DES SCRAPERS ET INGESTORS\n');
-    const vixScraper = new VixPlaywrightScraper();
-    const newsAggregator = new NewsAggregator();
+    const vixScraper = new VixPlaywrightScraper_1.VixPlaywrightScraper();
+    const newsAggregator = new NewsAggregator_1.NewsAggregator();
     // Test 1: VIX Scraper
     console.log('📊 1. TEST VIX SCRAPER');
     console.log('='.repeat(50));
@@ -92,5 +95,4 @@ if (require.main === module) {
         .then(() => console.log('\n✅ Tests terminés!'))
         .catch(error => console.error('\n❌ Erreur:', error instanceof Error ? error.message : String(error)));
 }
-export { testScrapers };
 //# sourceMappingURL=test_scrapers.js.map

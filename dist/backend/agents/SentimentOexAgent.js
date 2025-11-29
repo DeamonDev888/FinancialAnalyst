@@ -1,13 +1,16 @@
-import { BaseAgentSimple } from './BaseAgentSimple';
-import { CboeScraper } from '../ingestion/CboeScraper';
-import { Pool } from 'pg';
-export class SentimentOexAgent extends BaseAgentSimple {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SentimentOexAgent = void 0;
+const BaseAgentSimple_1 = require("./BaseAgentSimple");
+const CboeScraper_1 = require("../ingestion/CboeScraper");
+const pg_1 = require("pg");
+class SentimentOexAgent extends BaseAgentSimple_1.BaseAgentSimple {
     scraper;
     pool;
     constructor() {
         super('sentiment-oex-agent');
-        this.scraper = new CboeScraper();
-        this.pool = new Pool({
+        this.scraper = new CboeScraper_1.CboeScraper();
+        this.pool = new pg_1.Pool({
             host: process.env.DB_HOST || 'localhost',
             port: parseInt(process.env.DB_PORT || '5432'),
             database: process.env.DB_NAME || 'financial_analyst',
@@ -106,4 +109,5 @@ INSTRUCTIONS:
         }
     }
 }
+exports.SentimentOexAgent = SentimentOexAgent;
 //# sourceMappingURL=SentimentOexAgent.js.map

@@ -1,5 +1,7 @@
-import { Pool } from 'pg';
-const pool = new Pool({
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const pg_1 = require("pg");
+const pool = new pg_1.Pool({
     host: 'localhost',
     port: 5432,
     database: 'financial_analyst',

@@ -1,7 +1,9 @@
-import { RougePulseAgent } from '../agents/RougePulseAgent';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const RougePulseAgent_1 = require("../agents/RougePulseAgent");
 async function debugRougePulse() {
     console.log('--- DEBUG ROUGE PULSE AGENT ---');
-    const agent = new RougePulseAgent();
+    const agent = new RougePulseAgent_1.RougePulseAgent();
     try {
         // 1. Test SP500 Data
         console.log('\n1. Testing getLatestSP500FromDB...');

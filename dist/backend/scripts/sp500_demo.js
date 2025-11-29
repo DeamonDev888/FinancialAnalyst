@@ -1,7 +1,9 @@
-import { FinnhubClient } from '../ingestion/FinnhubClient';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const FinnhubClient_1 = require("../ingestion/FinnhubClient");
 async function demonstrateSP500Features() {
     console.log('🚀 Démonstration Finnhub - Données du S&P 500 et indices majeurs\n');
-    const finnhubClient = new FinnhubClient();
+    const finnhubClient = new FinnhubClient_1.FinnhubClient();
     // Feature 1: S&P 500 seul
     console.log('📊 S&P 500 (via ETF SPY):');
     const sp500Data = await finnhubClient.fetchSP500Data();

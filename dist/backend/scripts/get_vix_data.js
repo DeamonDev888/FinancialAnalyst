@@ -1,6 +1,12 @@
-import WebSocket from 'ws';
-import { EventEmitter } from 'events';
-export class SierraChartVIXClient extends EventEmitter {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SierraChartVIXClient = void 0;
+const ws_1 = __importDefault(require("ws"));
+const events_1 = require("events");
+class SierraChartVIXClient extends events_1.EventEmitter {
     ws = null;
     config;
     isConnected = false;
@@ -22,7 +28,7 @@ export class SierraChartVIXClient extends EventEmitter {
             try {
                 const wsUrl = `ws://${this.config.host}:${this.config.port}`;
                 console.log(`Connexion à Sierra Chart sur ${wsUrl}`);
-                this.ws = new WebSocket(wsUrl);
+                this.ws = new ws_1.default(wsUrl);
                 this.ws.on('open', () => {
                     console.log('Connecté à Sierra Chart');
                     this.isConnected = true;
@@ -56,7 +62,7 @@ export class SierraChartVIXClient extends EventEmitter {
      * Envoie la requête de connexion/authentification
      */
     sendLoginRequest() {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        if (!this.ws || this.ws.readyState !== ws_1.default.OPEN) {
             return;
         }
         // Construction du message DTC pour l'authentification
@@ -225,9 +231,10 @@ export class SierraChartVIXClient extends EventEmitter {
      * Vérifier le statut de connexion
      */
     isReady() {
-        return this.isConnected && this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+        return this.isConnected && this.ws !== null && this.ws.readyState === ws_1.default.OPEN;
     }
 }
+exports.SierraChartVIXClient = SierraChartVIXClient;
 /**
  * Fonction principale pour tester le client VIX
  */
@@ -277,7 +284,7 @@ async function main() {
     }
 }
 // Export pour utilisation dans d'autres modules
-export default SierraChartVIXClient;
+exports.default = SierraChartVIXClient;
 // Exécuter le script si appelé directement
 if (require.main === module) {
     main().catch(console.error);

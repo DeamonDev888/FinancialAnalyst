@@ -1,7 +1,9 @@
-import { RougePulseAgent } from '../agents/RougePulseAgent';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const RougePulseAgent_1 = require("../agents/RougePulseAgent");
 async function testRougePulseEnhanced() {
     console.log("🚀 Test de l'agent RougePulse amélioré avec données S&P 500 et niveaux techniques...\n");
-    const agent = new RougePulseAgent();
+    const agent = new RougePulseAgent_1.RougePulseAgent();
     try {
         // Lancer l'analyse complète
         console.log("🔍 Démarrage de l'analyse économique et technique...");

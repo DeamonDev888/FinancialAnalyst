@@ -1,7 +1,9 @@
-import { Pool } from 'pg';
-import { TradingEconomicsScraper } from '../ingestion/TradingEconomicsScraper';
-import { NewsAggregator } from '../ingestion/NewsAggregator';
-const pool = new Pool({
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const pg_1 = require("pg");
+const TradingEconomicsScraper_1 = require("../ingestion/TradingEconomicsScraper");
+const NewsAggregator_1 = require("../ingestion/NewsAggregator");
+const pool = new pg_1.Pool({
     host: 'localhost',
     port: 5432,
     database: 'financial_analyst',
@@ -14,7 +16,7 @@ async function compareScrapeVsDb() {
     try {
         // --- 1. TRADING ECONOMICS ---
         console.log('📊 1. TRADING ECONOMICS COMPARISON');
-        const teScraper = new TradingEconomicsScraper();
+        const teScraper = new TradingEconomicsScraper_1.TradingEconomicsScraper();
         console.log('   Running scraper...');
         const scrapedEvents = await teScraper.scrapeUSCalendar();
         console.log(`   > Scraped: ${scrapedEvents.length} events`);
@@ -57,7 +59,7 @@ async function compareScrapeVsDb() {
         }
         // --- 2. NEWS AGGREGATOR ---
         console.log('\n📰 2. NEWS AGGREGATOR COMPARISON');
-        const newsAggregator = new NewsAggregator();
+        const newsAggregator = new NewsAggregator_1.NewsAggregator();
         // Fetch a sample from one source to be quick (e.g., CNBC)
         console.log('   Fetching CNBC news (live)...');
         const cnbcNews = await newsAggregator.fetchCNBCMarketNews();

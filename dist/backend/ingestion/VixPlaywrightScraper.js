@@ -1,5 +1,8 @@
-import { chromium } from 'playwright';
-export class VixPlaywrightScraper {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.VixPlaywrightScraper = void 0;
+const playwright_1 = require("playwright");
+class VixPlaywrightScraper {
     browser = null;
     cache;
     metrics;
@@ -19,7 +22,7 @@ export class VixPlaywrightScraper {
             try {
                 // Attendre un court délai pour éviter les race conditions
                 await new Promise(resolve => setTimeout(resolve, 100));
-                this.browser = await chromium.launch({
+                this.browser = await playwright_1.chromium.launch({
                     headless: true,
                     args: ['--no-sandbox', '--disable-setuid-sandbox'],
                     timeout: 30000,
@@ -1279,4 +1282,5 @@ export class VixPlaywrightScraper {
         return lines;
     }
 }
+exports.VixPlaywrightScraper = VixPlaywrightScraper;
 //# sourceMappingURL=VixPlaywrightScraper.js.map

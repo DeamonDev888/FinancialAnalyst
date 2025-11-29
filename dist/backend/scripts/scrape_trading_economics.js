@@ -1,7 +1,9 @@
-import { TradingEconomicsScraper } from '../ingestion/TradingEconomicsScraper';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const TradingEconomicsScraper_1 = require("../ingestion/TradingEconomicsScraper");
 async function main() {
     console.log('📅 Starting Economic Calendar Scraping (US)...');
-    const scraper = new TradingEconomicsScraper();
+    const scraper = new TradingEconomicsScraper_1.TradingEconomicsScraper();
     try {
         // 1. Scrape
         const events = await scraper.scrapeUSCalendar();

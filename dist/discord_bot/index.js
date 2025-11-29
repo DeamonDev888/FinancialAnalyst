@@ -1,25 +1,60 @@
-import { Client, GatewayIntentBits } from 'discord.js';
-import * as dotenv from 'dotenv';
-import { Pool } from 'pg';
-import * as cron from 'node-cron';
-import * as path from 'path';
-import { RougePulseAgent } from '../backend/agents/RougePulseAgent';
-import { Vortex500Agent } from '../backend/agents/Vortex500Agent';
-import { VixSimpleAgent } from '../backend/agents/VixSimpleAgent';
-import { NewsAggregator } from '../backend/ingestion/NewsAggregator';
-import { TradingEconomicsScraper } from '../backend/ingestion/TradingEconomicsScraper';
-import { VixPlaywrightScraper } from '../backend/ingestion/VixPlaywrightScraper';
-import { RougePulseDatabaseService } from '../backend/database/RougePulseDatabaseService';
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const discord_js_1 = require("discord.js");
+const dotenv = __importStar(require("dotenv"));
+const pg_1 = require("pg");
+const cron = __importStar(require("node-cron"));
+const path = __importStar(require("path"));
+const RougePulseAgent_1 = require("../backend/agents/RougePulseAgent");
+const Vortex500Agent_1 = require("../backend/agents/Vortex500Agent");
+const VixSimpleAgent_1 = require("../backend/agents/VixSimpleAgent");
+const NewsAggregator_1 = require("../backend/ingestion/NewsAggregator");
+const TradingEconomicsScraper_1 = require("../backend/ingestion/TradingEconomicsScraper");
+const VixPlaywrightScraper_1 = require("../backend/ingestion/VixPlaywrightScraper");
+const RougePulseDatabaseService_1 = require("../backend/database/RougePulseDatabaseService");
 // Load env
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-const client = new Client({
+const client = new discord_js_1.Client({
     intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
+        discord_js_1.GatewayIntentBits.Guilds,
+        discord_js_1.GatewayIntentBits.GuildMessages,
+        discord_js_1.GatewayIntentBits.MessageContent,
     ],
 });
-const pool = new Pool({
+const pool = new pg_1.Pool({
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432'),
     database: process.env.DB_NAME || 'financial_analyst',
@@ -29,7 +64,7 @@ const pool = new Pool({
 const CHANNEL_ID = process.env.DISCORD_CHANNEL_ID || '';
 const APPLICATION_ID = '1442309135646331001';
 // Services de base de données
-const rougePulseDb = new RougePulseDatabaseService();
+const rougePulseDb = new RougePulseDatabaseService_1.RougePulseDatabaseService();
 // Fonction de formatage pour le nouvel agent RougePulseFixed
 function formatRougePulseMessageFixed(data) {
     const volatilityScore = data.volatility_score || 0;
@@ -275,13 +310,20 @@ Niveaux Cibles : ${expert.trading_recommendations?.target_vix_levels?.join(' - '
   `.trim();
 }
 function formatRougePulseMessage(data) {
-    const narrative = data.market_narrative || 'Pas de narratif disponible.';
-    const score = data.impact_score || 0;
-    const events = Array.isArray(data.high_impact_events)
+    // Use the actual properties returned by RougePulseAgent
+    const narrative = data.summary || 'Pas de narratif disponible.';
+    const score = data.volatility_score || 0;
+    const criticalEvents = Array.isArray(data.critical_events)
+        ? data.critical_events
+        : data.critical_events
+            ? JSON.parse(data.critical_events)
+            : [];
+    const highEvents = Array.isArray(data.high_impact_events)
         ? data.high_impact_events
         : data.high_impact_events
             ? JSON.parse(data.high_impact_events)
             : [];
+    const events = [...criticalEvents, ...highEvents];
     // Handle new ES Futures format (es_futures_analysis) and old (asset_analysis)
     const assets = data.asset_analysis
         ? typeof data.asset_analysis === 'string'
@@ -309,9 +351,11 @@ function formatRougePulseMessage(data) {
         eventsList = events
             .map((e) => {
             const event = e.event || e.name || 'Événement';
-            const details = e.actual_vs_forecast || e.actual || 'N/A';
-            const significance = e.significance || '';
-            return `**📊 ${event}**\n💫 ${details}${significance ? `\n🎯 ${significance}` : ''}`;
+            const time = e.time || '';
+            const importance = e.importance || '';
+            const forecast = e.forecast || '';
+            const previous = e.previous || '';
+            return `**📊 ${event}**\n⏰ ${time} | ${importance}\n💫 Prévision: ${forecast} | Précédent: ${previous}`;
         })
             .join('\n\n');
     }
@@ -633,7 +677,7 @@ client.on('messageCreate', async (message) => {
         console.log('🔴 Processing !rougepulseagent command...');
         const loadingMsg = await message.reply('🔴 **RougePulseAgent** analyse le calendrier économique... ⏳');
         try {
-            const agent = new RougePulseAgent();
+            const agent = new RougePulseAgent_1.RougePulseAgent();
             // Add a 95s timeout (slightly longer than agent's 90s timeout)
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: L'analyse prend trop de temps.")), 95000));
             const result = (await Promise.race([agent.analyzeMarketSentiment(), timeoutPromise]));
@@ -689,7 +733,7 @@ client.on('messageCreate', async (message) => {
         console.log('📊 Processing !vixagent command...');
         const loadingMsg = await message.reply('📊 **VixSimpleAgent** analyse la volatilité VIX depuis la base... ⏳');
         try {
-            const agent = new VixSimpleAgent();
+            const agent = new VixSimpleAgent_1.VixSimpleAgent();
             // Add a 180s timeout (increased for VIX)
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: L'analyse VIX prend trop de temps.")), 180000));
             const result = (await Promise.race([agent.analyzeVixStructure(), timeoutPromise]));
@@ -742,7 +786,7 @@ client.on('messageCreate', async (message) => {
         console.log('🧪 Processing !vortex500 command...');
         const loadingMsg = await message.reply('🧪 **Vortex500** analyse le sentiment de marché... ⏳');
         try {
-            const agent = new Vortex500Agent();
+            const agent = new Vortex500Agent_1.Vortex500Agent();
             // Add a 180s timeout (increased for VIX)
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: L'analyse VIX prend trop de temps.")), 180000));
             const result = (await Promise.race([agent.analyzeMarketSentiment(), timeoutPromise]));
@@ -765,7 +809,7 @@ client.on('messageCreate', async (message) => {
         console.log('📰 Processing !newsagg command...');
         const loadingMsg = await message.reply('📰 **NewsAggregator** récupère les dernières news... ⏳');
         try {
-            const aggregator = new NewsAggregator();
+            const aggregator = new NewsAggregator_1.NewsAggregator();
             // Get news from different sources
             const [zeroHedge, cnbc, financialJuice] = await Promise.allSettled([
                 aggregator.fetchZeroHedgeHeadlines(),
@@ -811,7 +855,7 @@ ${allNews.length > 15 ? `... et ${allNews.length - 15} autres articles` : ''}
         console.log('📅 Processing !tescraper command...');
         const loadingMsg = await message.reply('📅 **TradingEconomicsScraper** scrape le calendrier économique US... ⏳');
         try {
-            const scraper = new TradingEconomicsScraper();
+            const scraper = new TradingEconomicsScraper_1.TradingEconomicsScraper();
             // Add a 180s timeout for scraping (all 3 sources need ~120s)
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout: Le scraping prend trop de temps.')), 180000));
             const events = (await Promise.race([scraper.scrapeUSCalendar(), timeoutPromise]));
@@ -852,7 +896,7 @@ ${events.length > 10 ? `... et ${events.length - 10} autres événements` : ''}
         console.log('📈 Processing !vixscraper command...');
         const loadingMsg = await message.reply('📈 **VixPlaywrightScraper** scrape les données VIX... ⏳');
         try {
-            const scraper = new VixPlaywrightScraper();
+            const scraper = new VixPlaywrightScraper_1.VixPlaywrightScraper();
             // Add a 180s timeout for scraping (all 3 sources need ~120s)
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout: Le scraping prend trop de temps.')), 180000));
             const results = (await Promise.race([scraper.scrapeAll(), timeoutPromise]));

@@ -1,16 +1,19 @@
-import { Pool } from 'pg';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BlsScraper = void 0;
+const pg_1 = require("pg");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { chromium } = require('playwright-extra');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const stealth = require('puppeteer-extra-plugin-stealth');
 // Add stealth plugin
 chromium.use(stealth());
-export class BlsScraper {
+class BlsScraper {
     browser = null;
     pool;
     constructor() {
         // Initialize DB connection
-        this.pool = new Pool({
+        this.pool = new pg_1.Pool({
             user: process.env.DB_USER || 'postgres',
             host: process.env.DB_HOST || 'localhost',
             database: process.env.DB_NAME || 'financial_analyst',
@@ -243,4 +246,5 @@ export class BlsScraper {
         }
     }
 }
+exports.BlsScraper = BlsScraper;
 //# sourceMappingURL=BlsScraper.js.map

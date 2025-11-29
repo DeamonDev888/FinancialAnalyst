@@ -1,6 +1,9 @@
-import { Pool } from 'pg';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.addPriceSourceField = addPriceSourceField;
+const pg_1 = require("pg");
 async function addPriceSourceField() {
-    const pool = new Pool({
+    const pool = new pg_1.Pool({
         connectionString: process.env.DATABASE_URL,
     });
     const client = await pool.connect();
@@ -59,5 +62,4 @@ if (require.main === module) {
         process.exit(1);
     });
 }
-export { addPriceSourceField };
 //# sourceMappingURL=add_price_source_field.js.map

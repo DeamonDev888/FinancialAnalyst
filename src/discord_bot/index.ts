@@ -357,10 +357,12 @@ function formatRougePulseMessage(data: any): string[] {
     eventsList = events
       .map((e: any) => {
         const event = e.event || e.name || 'Événement';
-        const details = e.actual_vs_forecast || e.actual || 'N/A';
-        const significance = e.significance || '';
+        const time = e.time || '';
+        const importance = e.importance || '';
+        const forecast = e.forecast || '';
+        const previous = e.previous || '';
 
-        return `**📊 ${event}**\n💫 ${details}${significance ? `\n🎯 ${significance}` : ''}`;
+        return `**📊 ${event}**\n⏰ ${time} | ${importance}\n💫 Prévision: ${forecast} | Précédent: ${previous}`;
       })
       .join('\n\n');
   } else {
@@ -626,6 +628,81 @@ async function postDailySummary() {
   await channel.send(message);
 }
 
+async function postPreMarketAnalysis() {
+  if (!CHANNEL_ID) {
+    console.error('❌ DISCORD_CHANNEL_ID not set in .env');
+    return;
+  }
+  const channel = (await client.channels.fetch(CHANNEL_ID)) as TextChannel;
+  if (!channel) {
+    console.error('❌ Channel not found');
+    return;
+  }
+
+  console.log('🚀 Début de l\'analyse pré-marché séquencée...');
+
+  try {
+    // Étape 1: Récupérer les dernières news (!newsagg)
+    console.log('📰 Étape 1: Récupération des dernières news...');
+    const aggregator = new NewsAggregator();
+    const [zeroHedge, cnbc, financialJuice] = await Promise.allSettled([
+      aggregator.fetchZeroHedgeHeadlines(),
+      aggregator.fetchCNBCMarketNews(),
+      aggregator.fetchFinancialJuice(),
+    ]);
+
+    let newsCount = 0;
+    if (zeroHedge.status === 'fulfilled') newsCount += zeroHedge.value.length;
+    if (cnbc.status === 'fulfilled') newsCount += cnbc.value.length;
+    if (financialJuice.status === 'fulfilled') newsCount += financialJuice.value.length;
+
+    console.log(`✅ News récupérées: ${newsCount} articles`);
+
+    // Étape 2: Analyse Vortex500 (!vortex500)
+    console.log('🧪 Étape 2: Analyse Vortex500 en cours...');
+    const vortexAgent = new Vortex500Agent();
+
+    const vortexTimeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout: L'analyse Vortex500 prend trop de temps.")), 180000)
+    );
+
+    const vortexResult = (await Promise.race([vortexAgent.analyzeMarketSentiment(), vortexTimeoutPromise])) as any;
+
+    if (!vortexResult || vortexResult.sentiment === 'N/A') {
+      console.log('⚠️ Vortex500 n\'a pas pu générer d\'analyse');
+    } else {
+      console.log(`✅ Analyse Vortex500 complétée: ${vortexResult.sentiment}`);
+    }
+
+    // Étape 3: Analyse de sentiment (!sentiment)
+    console.log('📊 Étape 3: Analyse finale de sentiment...');
+    const sentiment = await getLatestSentiment();
+
+    if (!sentiment) {
+      console.log('❌ Aucune analyse de sentiment disponible');
+      await channel.send('❌ Impossible de récupérer l\'analyse de sentiment pour le résumé pré-marché.');
+      return;
+    }
+
+    // Afficher uniquement le résultat de !sentiment
+    const finalMessage = `
+**🌅 Analyse Pré-Marché Automatisée**
+${new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+
+${formatSentimentMessage(sentiment)}
+
+*Analyse générée automatiquement avant l'ouverture des marchés*
+    `.trim();
+
+    await channel.send(finalMessage);
+    console.log('✅ Analyse pré-marché publiée avec succès');
+
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'analyse pré-marché:', error);
+    await channel.send('❌ Une erreur est survenue lors de l\'analyse pré-marché automatisée.');
+  }
+}
+
 client.once('ready', () => {
   const asciiArt = `
    _______
@@ -641,9 +718,16 @@ client.once('ready', () => {
     `🔗 Lien d'invitation: https://discord.com/api/oauth2/authorize?client_id=${APPLICATION_ID}&permissions=84992&scope=bot`
   );
 
-  cron.schedule('0 8 * * *', async () => {
-    console.log('⏰ Running daily summary...');
-    await postDailySummary();
+  // Ancien résumé quotidien (conservez-le si vous voulez)
+  // cron.schedule('0 8 * * *', async () => {
+  //   console.log('⏰ Running daily summary...');
+  //   await postDailySummary();
+  // });
+
+  // Nouvelle analyse pré-marché : du lundi au vendredi à 8h30 avant l'ouverture des marchés
+  cron.schedule('30 8 * * 1-5', async () => {
+    console.log('🌅 Running pre-market analysis sequence...');
+    await postPreMarketAnalysis();
   });
 });
 

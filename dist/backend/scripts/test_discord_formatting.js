@@ -1,4 +1,6 @@
-import { RougePulseAgent } from '../agents/RougePulseAgent';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const RougePulseAgent_1 = require("../agents/RougePulseAgent");
 // Simulation de la fonction de formatage Discord
 function convertToFrenchIfNeeded(text) {
     if (!text || typeof text !== 'string')
@@ -95,7 +97,7 @@ ${truncatedRec}
 }
 async function testDiscordFormatting() {
     console.log('🚀 Test du formatage Discord avec traduction française...\n');
-    const agent = new RougePulseAgent();
+    const agent = new RougePulseAgent_1.RougePulseAgent();
     try {
         console.log("🔍 Lancement de l'analyse RougePulse...");
         const result = await agent.analyzeMarketSentiment();

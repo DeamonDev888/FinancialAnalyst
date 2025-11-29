@@ -1,4 +1,8 @@
-import { SierraChartVIXClient } from './get_vix_data';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getVIXSimple = getVIXSimple;
+exports.getCurrentVIXPrice = getCurrentVIXPrice;
+const get_vix_data_1 = require("./get_vix_data");
 /**
  * Exemple simple d'utilisation pour récupérer les données VIX
  */
@@ -8,7 +12,7 @@ async function getVIXSimple() {
         port: 11099,
         symbol: '.VIX', // Vous pouvez changer pour 'VIX' si nécessaire
     };
-    const client = new SierraChartVIXClient(config);
+    const client = new get_vix_data_1.SierraChartVIXClient(config);
     return new Promise((resolve, reject) => {
         let vixDataReceived = false;
         // Configuration du timeout après 30 secondes
@@ -76,7 +80,6 @@ async function main() {
         console.log('4. Aucun firewall ne bloque la connexion');
     }
 }
-export { getVIXSimple, getCurrentVIXPrice };
 // Exécuter si appelé directement
 if (require.main === module) {
     main();

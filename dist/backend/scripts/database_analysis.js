@@ -1,9 +1,15 @@
 #!/usr/bin/env ts-node
-import { Pool } from 'pg';
-import fs from 'fs';
-import path from 'path';
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.executeDatabaseAnalysis = executeDatabaseAnalysis;
+const pg_1 = require("pg");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 // Configuration de la base de données
-const pool = new Pool({
+const pool = new pg_1.Pool({
     host: 'localhost',
     port: 5432,
     database: 'financial_analyst',
@@ -15,8 +21,8 @@ async function executeDatabaseAnalysis() {
     try {
         const client = await pool.connect();
         // Lecture des requêtes SQL
-        const sqlFilePath = path.join(__dirname, '../../docs/database_analysis.md');
-        const fileContent = fs.readFileSync(sqlFilePath, 'utf8');
+        const sqlFilePath = path_1.default.join(__dirname, '../../docs/database_analysis.md');
+        const fileContent = fs_1.default.readFileSync(sqlFilePath, 'utf8');
         // Extraire les blocs SQL du fichier markdown
         const sqlBlocks = fileContent.match(/```sql\n([\s\S]*?)\n```/g);
         if (!sqlBlocks) {
@@ -129,5 +135,4 @@ if (require.main === module) {
         process.exit(1);
     });
 }
-export { executeDatabaseAnalysis };
 //# sourceMappingURL=database_analysis.js.map

@@ -1,6 +1,12 @@
-import WebSocket from 'ws';
-import { EventEmitter } from 'events';
-export class SierraChartVIXPersistent extends EventEmitter {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SierraChartVIXPersistent = void 0;
+const ws_1 = __importDefault(require("ws"));
+const events_1 = require("events");
+class SierraChartVIXPersistent extends events_1.EventEmitter {
     ws = null;
     host;
     port;
@@ -25,7 +31,7 @@ export class SierraChartVIXPersistent extends EventEmitter {
             try {
                 const wsUrl = `ws://${this.host}:${this.port}`;
                 console.log(`🔌 Connexion persistante à Sierra Chart sur ${wsUrl}`);
-                this.ws = new WebSocket(wsUrl);
+                this.ws = new ws_1.default(wsUrl);
                 this.ws.on('open', () => {
                     console.log('✅ WebSocket connecté');
                     this.isConnected = true;
@@ -82,7 +88,7 @@ export class SierraChartVIXPersistent extends EventEmitter {
      * Envoyer un message DTC
      */
     sendDTCMessage(message) {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        if (!this.ws || this.ws.readyState !== ws_1.default.OPEN) {
             console.error('❌ WebSocket non connecté');
             return;
         }
@@ -309,6 +315,7 @@ export class SierraChartVIXPersistent extends EventEmitter {
         console.log('🔌 Déconnexion manuelle');
     }
 }
+exports.SierraChartVIXPersistent = SierraChartVIXPersistent;
 /**
  * Client persistant principal
  */
@@ -347,7 +354,7 @@ async function main() {
         process.exit(1);
     }
 }
-export default SierraChartVIXPersistent;
+exports.default = SierraChartVIXPersistent;
 if (require.main === module) {
     main();
 }

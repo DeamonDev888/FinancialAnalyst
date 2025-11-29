@@ -1,15 +1,51 @@
 #!/usr/bin/env ts-node
-import { Vortex500Agent } from '../agents/Vortex500Agent';
-import { NewsDatabaseService } from '../database/NewsDatabaseService';
-import { NewsAggregator } from '../ingestion/NewsAggregator';
-import * as dotenv from 'dotenv';
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AgentOptimizer = void 0;
+const Vortex500Agent_1 = require("../agents/Vortex500Agent");
+const NewsDatabaseService_1 = require("../database/NewsDatabaseService");
+const NewsAggregator_1 = require("../ingestion/NewsAggregator");
+const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 class AgentOptimizer {
     dbService;
     newsAggregator;
     constructor() {
-        this.dbService = new NewsDatabaseService();
-        this.newsAggregator = new NewsAggregator();
+        this.dbService = new NewsDatabaseService_1.NewsDatabaseService();
+        this.newsAggregator = new NewsAggregator_1.NewsAggregator();
     }
     async testConnection() {
         try {
@@ -91,7 +127,7 @@ class AgentOptimizer {
     }
     async optimizeVortexAgent() {
         console.log('🚀 Optimisation Vortex500Agent...');
-        const agent = new Vortex500Agent();
+        const agent = new Vortex500Agent_1.Vortex500Agent();
         const before = await this.analyzeAgentPerformance('Vortex500Agent', agent);
         const improvements = [];
         const issues = [...before.issues];
@@ -131,7 +167,7 @@ class AgentOptimizer {
         console.log('🔧 Création RougePulseAgent optimisé...');
         try {
             // Importer l'agent corrigé
-            const { RougePulseAgent } = await import('../agents/RougePulseAgent');
+            const { RougePulseAgent } = await Promise.resolve().then(() => __importStar(require('../agents/RougePulseAgent')));
             const agent = new RougePulseAgent();
             return await this.analyzeAgentPerformance('RougePulseAgent', agent);
         }
@@ -367,6 +403,7 @@ class AgentOptimizer {
         console.log('🔌 Connexions fermées');
     }
 }
+exports.AgentOptimizer = AgentOptimizer;
 // Script principal
 if (require.main === module) {
     (async () => {
@@ -407,5 +444,4 @@ if (require.main === module) {
         process.exit(3);
     });
 }
-export { AgentOptimizer };
 //# sourceMappingURL=optimize_agents.js.map

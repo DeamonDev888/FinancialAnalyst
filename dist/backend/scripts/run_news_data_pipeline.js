@@ -1,4 +1,6 @@
-import { NewsDataManager } from '../data/NewsDataManager';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const NewsDataManager_1 = require("../data/NewsDataManager");
 /**
  * SCRIPT: run_news_data_pipeline.ts
  *
@@ -14,7 +16,7 @@ import { NewsDataManager } from '../data/NewsDataManager';
 async function main() {
     console.log('🚀 Starting News Data Processing Pipeline...');
     console.log('='.repeat(60));
-    const dataManager = new NewsDataManager();
+    const dataManager = new NewsDataManager_1.NewsDataManager();
     try {
         // Exécuter le pipeline quotidien
         await dataManager.runDailyNewsPipeline();

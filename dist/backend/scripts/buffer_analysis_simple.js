@@ -1,15 +1,51 @@
 #!/usr/bin/env ts-node
-import { Pool } from 'pg';
-import { Vortex500Agent } from '../agents/Vortex500Agent';
-import { RougePulseAgent } from '../agents/RougePulseAgent';
-import { NewsDatabaseService } from '../database/NewsDatabaseService';
-import * as dotenv from 'dotenv';
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SimpleBufferAnalyzer = void 0;
+const pg_1 = require("pg");
+const Vortex500Agent_1 = require("../agents/Vortex500Agent");
+const RougePulseAgent_1 = require("../agents/RougePulseAgent");
+const NewsDatabaseService_1 = require("../database/NewsDatabaseService");
+const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 class SimpleBufferAnalyzer {
     pool;
     dbService;
     constructor() {
-        this.pool = new Pool({
+        this.pool = new pg_1.Pool({
             host: process.env.DB_HOST || 'localhost',
             port: parseInt(process.env.DB_PORT || '5432'),
             database: process.env.DB_NAME || 'financial_analyst',
@@ -17,7 +53,7 @@ class SimpleBufferAnalyzer {
             password: process.env.DB_PASSWORD || '9022',
             max: 20,
         });
-        this.dbService = new NewsDatabaseService();
+        this.dbService = new NewsDatabaseService_1.NewsDatabaseService();
     }
     async testConnection() {
         try {
@@ -131,7 +167,7 @@ class SimpleBufferAnalyzer {
         // Analyser chaque agent
         console.log("\n🤖 Analyse de l'utilisation du buffer par les agents...");
         try {
-            const vortexAgent = new Vortex500Agent();
+            const vortexAgent = new Vortex500Agent_1.Vortex500Agent();
             report.agents['Vortex500Agent'] = await this.analyzeAgentBufferUsage('Vortex500Agent', vortexAgent);
         }
         catch (error) {
@@ -144,7 +180,7 @@ class SimpleBufferAnalyzer {
             };
         }
         try {
-            const rougeAgent = new RougePulseAgent();
+            const rougeAgent = new RougePulseAgent_1.RougePulseAgent();
             report.agents['RougePulseAgent'] = await this.analyzeAgentBufferUsage('RougePulseAgent', rougeAgent);
         }
         catch (error) {
@@ -278,6 +314,7 @@ class SimpleBufferAnalyzer {
         console.log('🔌 Connexions fermées');
     }
 }
+exports.SimpleBufferAnalyzer = SimpleBufferAnalyzer;
 // Script principal
 if (require.main === module) {
     (async () => {
@@ -327,5 +364,4 @@ if (require.main === module) {
         process.exit(3);
     });
 }
-export { SimpleBufferAnalyzer };
 //# sourceMappingURL=buffer_analysis_simple.js.map

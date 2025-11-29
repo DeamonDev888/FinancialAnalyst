@@ -1,5 +1,7 @@
-import { NewsAggregator } from '../ingestion/NewsAggregator';
-import { ToonFormatter } from '../utils/ToonFormatter';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const NewsAggregator_1 = require("../ingestion/NewsAggregator");
+const ToonFormatter_1 = require("../utils/ToonFormatter");
 /**
  * SCRIPT: fetch_sentiment_data.ts
  *
@@ -12,7 +14,7 @@ import { ToonFormatter } from '../utils/ToonFormatter';
  * cat data/input.toon | kilocode -m ask ...
  */
 async function main() {
-    const aggregator = new NewsAggregator();
+    const aggregator = new NewsAggregator_1.NewsAggregator();
     // 1. Récupération parallèle des données
     // (On utilise des logs sur STDERR pour ne pas polluer la sortie STDOUT qui servira de prompt)
     console.error('>>> Fetching market news...');
@@ -28,7 +30,7 @@ async function main() {
         return;
     }
     // 2. Formatage TOON (Sortie pure pour l'IA)
-    const toonOutput = ToonFormatter.arrayToToon('market_news', allNews.map(n => ({
+    const toonOutput = ToonFormatter_1.ToonFormatter.arrayToToon('market_news', allNews.map(n => ({
         title: n.title.replace(/,/g, ' '), // Nettoyage basique pour le CSV-like du TOON
         source: n.source,
         time: n.timestamp.toISOString().split('T')[1].substring(0, 5), // HH:MM

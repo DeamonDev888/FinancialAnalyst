@@ -1,7 +1,9 @@
-import { FinnhubClient } from '../ingestion/FinnhubClient';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const FinnhubClient_1 = require("../ingestion/FinnhubClient");
 async function testSP500() {
     console.log('🚀 Test de récupération des données du S&P 500 avec Finnhub...\n');
-    const finnhubClient = new FinnhubClient();
+    const finnhubClient = new FinnhubClient_1.FinnhubClient();
     // Test 1: S&P 500 avec différents symboles
     console.log('📊 Test 1 - S&P 500 (test avec différents symboles):');
     const testSymbols = ['^GSPC', '.SPX', 'SPY', 'SPX', 'S&P500', 'GSPC'];

@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import { FredClient } from './FredClient';
 import { FinnhubClient } from './FinnhubClient';
 import { TradingEconomicsScraper } from './TradingEconomicsScraper';
+import { NewsScraper } from './NewsScraper';
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
 
@@ -21,12 +22,14 @@ export class NewsAggregator {
   private fredClient: FredClient;
   private finnhubClient: FinnhubClient;
   private teScraper: TradingEconomicsScraper;
+  private newsScraper: NewsScraper;
   private pool: Pool;
 
   constructor() {
     this.fredClient = new FredClient();
     this.finnhubClient = new FinnhubClient();
     this.teScraper = new TradingEconomicsScraper();
+    this.newsScraper = new NewsScraper();
     this.pool = new Pool({
       host: process.env.DB_HOST || 'localhost',
       port: parseInt(process.env.DB_PORT || '5432'),
@@ -34,6 +37,16 @@ export class NewsAggregator {
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || '9022',
     });
+  }
+
+  /**
+   * Scrapes the full content of an article from its URL.
+   */
+  /**
+   * Scrapes the full content of an article from its URL using Playwright.
+   */
+  private async scrapeArticleContent(url: string): Promise<string> {
+    return this.newsScraper.scrapeArticle(url);
   }
 
   /**
@@ -48,24 +61,38 @@ export class NewsAggregator {
       });
 
       const $ = cheerio.load(data, { xmlMode: true });
-      const news: NewsItem[] = [];
-
-      $('item').each((_, el) => {
+      
+      // Get top 5 items to scrape content for (to avoid timeouts)
+      const items = $('item').toArray().slice(0, 5);
+      
+      const newsPromises = items.map(async (el): Promise<NewsItem | null> => {
         const title = $(el).find('title').text().trim();
         const link = $(el).find('link').text().trim();
         const pubDate = $(el).find('pubDate').text();
+        const description = $(el).find('description').text().trim();
 
         if (title && link) {
-          news.push({
+          // Fetch full content
+          let content = await this.scrapeArticleContent(link);
+          
+          // Fallback to description if scraping failed or returned little content
+          if (!content || content.length < 50) {
+            content = description;
+          }
+
+          return {
             title,
             source: 'ZeroHedge',
             url: link,
             timestamp: new Date(pubDate),
-          });
+            content: content || title // Ensure we have something
+          };
         }
+        return null;
       });
 
-      return news.slice(0, 10); // Top 10 news
+      const results = await Promise.all(newsPromises);
+      return results.filter((n): n is NewsItem => n !== null);
     } catch (error) {
       console.error(
         'Error fetching ZeroHedge RSS:',
@@ -91,23 +118,36 @@ export class NewsAggregator {
       );
 
       const $ = cheerio.load(data, { xmlMode: true });
-      const news: NewsItem[] = [];
+      
+      // Get top 5 items
+      const items = $('item').toArray().slice(0, 5);
 
-      $('item').each((_, el) => {
+      const newsPromises = items.map(async (el): Promise<NewsItem | null> => {
         const title = $(el).find('title').text().trim();
         const link = $(el).find('link').text().trim();
         const pubDate = $(el).find('pubDate').text();
+        const description = $(el).find('description').text().trim();
 
         if (title && link) {
-          news.push({
+          let content = await this.scrapeArticleContent(link);
+          
+          if (!content || content.length < 50) {
+            content = description;
+          }
+
+          return {
             title,
             source: 'CNBC',
             url: link,
             timestamp: new Date(pubDate),
-          });
+            content: content || title
+          };
         }
+        return null;
       });
-      return news.slice(0, 10);
+
+      const results = await Promise.all(newsPromises);
+      return results.filter((n): n is NewsItem => n !== null);
     } catch (error) {
       console.error('Error fetching CNBC RSS:', error instanceof Error ? error.message : error);
       return [];
@@ -126,24 +166,39 @@ export class NewsAggregator {
       });
 
       const $ = cheerio.load(data, { xmlMode: true });
-      const news: NewsItem[] = [];
+      
+      // Get top 10 items for FinancialJuice (often shorter updates)
+      const items = $('item').toArray().slice(0, 10);
 
-      $('item').each((_, el) => {
+      const newsPromises = items.map(async (el): Promise<NewsItem | null> => {
         const title = $(el).find('title').text().trim();
         const link = $(el).find('link').text().trim();
         const pubDate = $(el).find('pubDate').text();
+        // FinancialJuice often puts the content in the title or description directly
+        const description = $(el).find('description').text().trim();
 
         if (title && link) {
-          news.push({
+          // FinancialJuice links often redirect or are just headlines. 
+          // We'll try to scrape but rely heavily on description.
+          let content = await this.scrapeArticleContent(link);
+          
+          if (!content || content.length < 20) {
+             content = description;
+          }
+
+          return {
             title,
             source: 'FinancialJuice',
             url: link,
             timestamp: new Date(pubDate),
-          });
+            content: content || title
+          };
         }
+        return null;
       });
 
-      return news.slice(0, 20); // Top 20 news
+      const results = await Promise.all(newsPromises);
+      return results.filter((n): n is NewsItem => n !== null);
     } catch (error) {
       console.error(
         'Error fetching FinancialJuice RSS:',
@@ -319,9 +374,23 @@ export class NewsAggregator {
             `
                 INSERT INTO news_items (title, source, url, content, sentiment, published_at)
                 VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (title, source, published_at) DO NOTHING
+                ON CONFLICT (title, source, published_at) 
+                DO UPDATE SET 
+                  content = EXCLUDED.content,
+                  url = EXCLUDED.url
+                WHERE 
+                  news_items.content IS NULL 
+                  OR length(news_items.content) < 50
+                  OR length(EXCLUDED.content) > length(COALESCE(news_items.content, ''));
             `,
-            [item.title, item.source, item.url, item.content, item.sentiment, item.timestamp]
+            [
+              item.title, 
+              item.source, 
+              item.url, 
+              item.content || null, // Ensure explicit null if undefined
+              item.sentiment, 
+              item.timestamp
+            ]
           );
           savedCount++;
         } catch (e) {
@@ -346,6 +415,9 @@ export class NewsAggregator {
     const allNews: NewsItem[] = [];
 
     try {
+      // Initialize the scraper (launches browser)
+      await this.newsScraper.init();
+
       // Récupérer toutes les sources en parallèle
       const [zerohedge, cnbc, financialjuice, finnhub, fred, te] = await Promise.allSettled([
         this.fetchZeroHedgeHeadlines(),
@@ -397,6 +469,14 @@ export class NewsAggregator {
     } catch (error) {
       console.error('❌ Error during news aggregation:', error);
       return allNews;
+    } finally {
+      // Close the scraper (closes browser)
+      await this.close();
     }
+  }
+
+  async close(): Promise<void> {
+    await this.newsScraper.close();
+    await this.pool.end();
   }
 }

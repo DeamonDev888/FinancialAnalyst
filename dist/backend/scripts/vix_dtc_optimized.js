@@ -1,6 +1,12 @@
-import WebSocket from 'ws';
-import { EventEmitter } from 'events';
-export class SierraChartDTCOptimized extends EventEmitter {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SierraChartDTCOptimized = void 0;
+const ws_1 = __importDefault(require("ws"));
+const events_1 = require("events");
+class SierraChartDTCOptimized extends events_1.EventEmitter {
     ws = null;
     host;
     port;
@@ -22,7 +28,7 @@ export class SierraChartDTCOptimized extends EventEmitter {
             try {
                 const wsUrl = `ws://${this.host}:${this.port}`;
                 console.log(`🔌 Connexion à Sierra Chart DTC sur ${wsUrl}`);
-                this.ws = new WebSocket(wsUrl);
+                this.ws = new ws_1.default(wsUrl);
                 this.ws.on('open', () => {
                     console.log('✅ WebSocket connecté');
                     this.isConnected = true;
@@ -59,7 +65,7 @@ export class SierraChartDTCOptimized extends EventEmitter {
      * Envoyer un message DTC au bon format
      */
     sendDTCMessage(message) {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        if (!this.ws || this.ws.readyState !== ws_1.default.OPEN) {
             console.error('❌ WebSocket non connecté');
             return;
         }
@@ -323,6 +329,7 @@ export class SierraChartDTCOptimized extends EventEmitter {
         };
     }
 }
+exports.SierraChartDTCOptimized = SierraChartDTCOptimized;
 /**
  * Exemple d'utilisation complet avec crypto 24/7
  */
@@ -401,7 +408,7 @@ async function main() {
         process.exit(1);
     }
 }
-export default SierraChartDTCOptimized;
+exports.default = SierraChartDTCOptimized;
 if (require.main === module) {
     main();
 }
