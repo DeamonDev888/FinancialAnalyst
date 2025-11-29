@@ -565,7 +565,7 @@ RULES:
    */
   private stripAnsiCodes(str: string): string {
     // Remove ANSI escape sequences
-    const ansiRegex = new RegExp('\x1b\\[[0-9;]*[A-Za-z]', 'g');
+    const ansiRegex = /\x1b\[[0-9;]*[A-Za-z]/g;
     return str.replace(ansiRegex, '');
   }
 

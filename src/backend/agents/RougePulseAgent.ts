@@ -45,6 +45,147 @@ export class RougePulseAgent extends BaseAgentSimple {
   constructor() {
     super('rouge-pulse-agent');
     this.execAsync = promisify(exec);
+
+  /**
+   * Analyse de sentiment principale pour compatibilité avec les autres agents
+   */
+  async analyzeMarketSentiment(_forceRefresh: boolean = false): Promise<Record<string, unknown>> {
+    console.log(`[${this.agentName}] Starting Rouge Pulse market sentiment analysis...`);
+
+    try {
+      // Utiliser la méthode d'analyse technique existante
+      const technicalAnalysis = await this.analyzeWithTechnicalLevels();
+
+      // Convertir en format compatible avec les autres agents
+      const sentiment = this.convertTechnicalToSentiment(technicalAnalysis);
+
+      console.log(`[${this.agentName}] Analysis completed successfully`);
+      console.log(`   • Sentiment: ${sentiment.sentiment}`);
+      console.log(`   • Score: ${sentiment.score}`);
+      console.log(`   • Confidence: ${sentiment.confidence}%`);
+
+      return {
+        sentiment: sentiment.sentiment,
+        score: sentiment.score,
+        confidence: sentiment.confidence,
+        catalysts: sentiment.catalysts,
+        risk_level: sentiment.risk_level,
+        summary: sentiment.summary,
+        news_count: 0, // Technical analysis doesn't use news
+        sources_analyzed: { 'technical_levels': 1 },
+        analysis_method: 'rouge_pulse_technical',
+        data_source: 'technical_analysis',
+        current_price: technicalAnalysis.current_price,
+        supports: technicalAnalysis.supports.length,
+        resistances: technicalAnalysis.resistances.length,
+      };
+    } catch (error) {
+      console.error(`[${this.agentName}] Analysis failed:`, error);
+      return this.createNotAvailableResult(
+        `Technical analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  private convertTechnicalToSentiment(technical: TechnicalLevels): {
+    sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+    score: number;
+    confidence: number;
+    catalysts: string[];
+    risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
+    summary: string;
+  } {
+    const price = technical.current_price;
+    const { supports, resistances } = technical;
+
+    // Analyser la position par rapport aux supports/résistances
+    const nearestSupport = supports
+      .filter(s => s.level < price)
+      .sort((a, b) => b.level - a.level)[0];
+
+    const nearestResistance = resistances
+      .filter(r => r.level > price)
+      .sort((a, b) => a.level - b.level)[0];
+
+    let sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL' = 'NEUTRAL';
+    let score = 0;
+    let confidence = 50;
+
+    // Calculer le sentiment basé sur la position et la force des niveaux
+    if (nearestResistance && nearestSupport) {
+      const distToSupport = ((price - nearestSupport.level) / nearestSupport.level) * 100;
+      const distToResistance = ((nearestResistance.level - price) / nearestResistance.level) * 100;
+
+      if (distToSupport < distToSupport) {
+        // Plus proche du support -> potentiel de rebond haussier
+        if (nearestSupport.strength === 'fort') {
+          sentiment = 'BULLISH';
+          score = Math.min(30, distToSupport * 2);
+          confidence = Math.min(85, 50 + (nearestSupport.edge_score / 10));
+        } else {
+          sentiment = 'NEUTRAL';
+          score = Math.min(15, distToSupport);
+          confidence = Math.min(70, 50 + (nearestSupport.edge_score / 15));
+        }
+      } else {
+        // Plus proche de résistance -> potentiel de baisse
+        if (nearestResistance.strength === 'fort') {
+          sentiment = 'BEARISH';
+          score = Math.max(-30, -distToResistance * 2);
+          confidence = Math.min(85, 50 + (nearestResistance.edge_score / 10));
+        } else {
+          sentiment = 'NEUTRAL';
+          score = Math.max(-15, -distToResistance);
+          confidence = Math.min(70, 50 + (nearestResistance.edge_score / 15));
+        }
+      }
+    }
+
+    // Ajuster basé sur le nombre de niveaux significatifs
+    const strongSupports = supports.filter(s => s.strength === 'fort').length;
+    const strongResistances = resistances.filter(r => r.strength === 'fort').length;
+
+    if (strongSupports > strongResistances) {
+      score = Math.min(score + 10, 40);
+      confidence = Math.min(confidence + 5, 90);
+    } else if (strongResistances > strongSupports) {
+      score = Math.max(score - 10, -40);
+      confidence = Math.min(confidence + 5, 90);
+    }
+
+    // Déterminer le niveau de risque
+    const risk_level: 'LOW' | 'MEDIUM' | 'HIGH' =
+      confidence > 75 ? 'LOW' :
+      confidence > 50 ? 'MEDIUM' : 'HIGH';
+
+    // Générer les catalystes et le résumé
+    const catalysts: string[] = [];
+
+    if (nearestSupport && nearestSupport.strength === 'fort') {
+      catalysts.push(`Support fort à ${nearestSupport.level}`);
+    }
+
+    if (nearestResistance && nearestResistance.strength === 'fort') {
+      catalysts.push(`Résistance forte à ${nearestResistance.level}`);
+    }
+
+    if (strongSupports > strongResistances) {
+      catalysts.push('Plus de supports que de résistances');
+    } else if (strongResistances > strongSupports) {
+      catalysts.push('Plus de résistances que de supports');
+    }
+
+    const summary = `Analyse technique: prix actuel ${price}, ${sentiment.toLowerCase()} avec confiance ${confidence}%. Catalysts: ${catalysts.join(', ')}`;
+
+    return {
+      sentiment,
+      score,
+      confidence,
+      catalysts,
+      risk_level,
+      summary,
+    };
+  }
     this.pool = new Pool({
       host: process.env.DB_HOST || 'localhost',
       port: parseInt(process.env.DB_PORT || '5432'),

@@ -127,7 +127,6 @@ export class VixSimpleAgent {
 
       console.log('[VixSimpleAgent] ✅ VIX Database Analysis completed successfully');
       return analysis;
-
     } catch (error) {
       console.error('[VixSimpleAgent] ❌ Error during VIX analysis:', error);
       return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
@@ -159,7 +158,7 @@ export class VixSimpleAgent {
         value: parseFloat(row.value),
         change: parseFloat(row.change || '0'),
         change_pct: parseFloat(row.change_pct || '0'),
-        source: row.source || 'database'
+        source: row.source || 'database',
       }));
     } catch (error) {
       console.error('[VixSimpleAgent] Error fetching VIX data:', error);
@@ -183,7 +182,7 @@ export class VixSimpleAgent {
         value: parseFloat(row.value),
         change: parseFloat(row.change || '0'),
         change_pct: parseFloat(row.change_pct || '0'),
-        source: row.source || 'database'
+        source: row.source || 'database',
       }));
     } catch (error) {
       console.error('[VixSimpleAgent] Error fetching VVIX data:', error);
@@ -191,20 +190,24 @@ export class VixSimpleAgent {
     }
   }
 
-  private async performVixAnalysis(vixData: VixData[], vvixData: VixData[]): Promise<VixAnalysisData> {
+  private async performVixAnalysis(
+    vixData: VixData[],
+    vvixData: VixData[]
+  ): Promise<VixAnalysisData> {
     const latestVix = vixData[0];
     const latestVvix = vvixData[0];
 
     // Calculer les statistiques VIX
     const vixSources = vixData.filter(d => d.symbol.includes('VIX')).slice(0, 10);
-    const consensusValue = vixSources.length > 0
-      ? vixSources.reduce((sum, d) => sum + d.value, 0) / vixSources.length
-      : latestVix.value;
+    const consensusValue =
+      vixSources.length > 0
+        ? vixSources.reduce((sum, d) => sum + d.value, 0) / vixSources.length
+        : latestVix.value;
 
     const spread = {
       min: Math.min(...vixSources.map(d => d.value)),
       max: Math.max(...vixSources.map(d => d.value)),
-      range: 0
+      range: 0,
     };
     spread.range = spread.max - spread.min;
 
@@ -215,7 +218,12 @@ export class VixSimpleAgent {
     const vixTrend = this.determineVixTrend(vixData);
 
     // Générer les insights
-    const keyInsights = this.generateKeyInsights(vixData, vvixData, consensusValue, volatilityRegime);
+    const keyInsights = this.generateKeyInsights(
+      vixData,
+      vvixData,
+      consensusValue,
+      volatilityRegime
+    );
 
     // Créer l'analyse experte
     const expertAnalysis = {
@@ -224,17 +232,17 @@ export class VixSimpleAgent {
       expert_summary: this.generateExpertSummary(consensusValue, volatilityRegime, vixTrend),
       market_implications: {
         es_futures_bias: this.determineESFuturesBias(vixTrend),
-        market_structure: this.determineMarketStructure(volatilityRegime)
+        market_structure: this.determineMarketStructure(volatilityRegime),
       },
       trading_recommendations: {
         strategy: this.determineTradingStrategy(volatilityRegime, vixTrend),
         time_horizon: this.determineTimeHorizon(volatilityRegime),
         volatility_adjustment: this.determineVolatilityAdjustment(volatilityRegime),
         risk_management: this.determineRiskManagement(consensusValue),
-        target_vix_levels: this.calculateTargetLevels(consensusValue, volatilityRegime)
+        target_vix_levels: this.calculateTargetLevels(consensusValue, volatilityRegime),
       },
       catalysts: this.identifyCatalysts(vixData),
-      key_insights: keyInsights
+      key_insights: keyInsights,
     };
 
     // Analyse intelligente
@@ -249,32 +257,34 @@ export class VixSimpleAgent {
       alerts: this.generateAlerts(consensusValue, volatilityRegime),
       market_signal: this.determineMarketSignal(vixTrend),
       signal_strength: this.determineSignalStrength(vixData),
-      key_insights: keyInsights
+      key_insights: keyInsights,
     };
 
     return {
       current_vix_data: {
         consensus_value: consensusValue,
         spread,
-        sources: vixSources
+        sources: vixSources,
       },
-      current_vvix_data: latestVvix ? {
-        consensus_value: latestVvix.value,
-        change_pct: latestVvix.change_pct
-      } : undefined,
+      current_vvix_data: latestVvix
+        ? {
+            consensus_value: latestVvix.value,
+            change_pct: latestVvix.change_pct,
+          }
+        : undefined,
       intelligent_volatility_analysis: intelligentAnalysis,
       expert_volatility_analysis: expertAnalysis,
       metadata: {
         analysis_timestamp: new Date().toISOString(),
         analysis_type: 'vix_database_analysis',
         vix_sources_count: vixSources.length,
-        vvix_sources_count: vvixData.length
+        vvix_sources_count: vvixData.length,
       },
       combined_analysis: {
         market_outlook: this.generateMarketOutlook(volatilityRegime, vixTrend),
         key_takeaways: keyInsights,
-        actionable_recommendations: this.generateActionableRecommendations(expertAnalysis)
-      }
+        actionable_recommendations: this.generateActionableRecommendations(expertAnalysis),
+      },
     };
   }
 
@@ -293,7 +303,8 @@ export class VixSimpleAgent {
     const older = vixData.slice(5, 10);
 
     const recentAvg = recent.reduce((sum, d) => sum + d.value, 0) / recent.length;
-    const olderAvg = older.length > 0 ? older.reduce((sum, d) => sum + d.value, 0) / older.length : recentAvg;
+    const olderAvg =
+      older.length > 0 ? older.reduce((sum, d) => sum + d.value, 0) / older.length : recentAvg;
 
     const diff = ((recentAvg - olderAvg) / olderAvg) * 100;
 
@@ -302,19 +313,30 @@ export class VixSimpleAgent {
     return 'NEUTRAL';
   }
 
-  private generateKeyInsights(vixData: VixData[], vvixData: VixData[], consensusValue: number, regime: string): string[] {
+  private generateKeyInsights(
+    vixData: VixData[],
+    vvixData: VixData[],
+    consensusValue: number,
+    regime: string
+  ): string[] {
     const insights = [];
 
-    insights.push(`VIX consensus at ${consensusValue.toFixed(2)} indicates ${regime.toLowerCase()} volatility regime`);
+    insights.push(
+      `VIX consensus at ${consensusValue.toFixed(2)} indicates ${regime.toLowerCase()} volatility regime`
+    );
 
     if (vvixData.length > 0) {
       const vvixPremium = ((vvixData[0].value - consensusValue) / consensusValue) * 100;
-      insights.push(`VVIX premium of ${vvixPremium.toFixed(1)}% suggests ${vvixPremium > 10 ? 'elevated fear levels' : 'moderate market expectations'}`);
+      insights.push(
+        `VVIX premium of ${vvixPremium.toFixed(1)}% suggests ${vvixPremium > 10 ? 'elevated fear levels' : 'moderate market expectations'}`
+      );
     }
 
     const spread = this.calculateSpread(vixData);
     if (spread > 2) {
-      insights.push(`Wide VIX spread (${spread.toFixed(2)}) indicates divergent market data sources`);
+      insights.push(
+        `Wide VIX spread (${spread.toFixed(2)}) indicates divergent market data sources`
+      );
     }
 
     return insights;
@@ -338,18 +360,25 @@ export class VixSimpleAgent {
 
   private determineESFuturesBias(vixTrend: string): string {
     switch (vixTrend) {
-      case 'BULLISH': return 'BEARISH';
-      case 'BEARISH': return 'BULLISH';
-      default: return 'NEUTRAL';
+      case 'BULLISH':
+        return 'BEARISH';
+      case 'BEARISH':
+        return 'BULLISH';
+      default:
+        return 'NEUTRAL';
     }
   }
 
   private determineMarketStructure(regime: string): string {
     switch (regime) {
-      case 'CRISIS': return 'Risk-off environment, flight to safety';
-      case 'ELEVATED': return 'Cautious sentiment, selective risk-taking';
-      case 'NORMAL': return 'Balanced approach, opportunistic trading';
-      default: return 'Risk-on environment, search for yield';
+      case 'CRISIS':
+        return 'Risk-off environment, flight to safety';
+      case 'ELEVATED':
+        return 'Cautious sentiment, selective risk-taking';
+      case 'NORMAL':
+        return 'Balanced approach, opportunistic trading';
+      default:
+        return 'Risk-on environment, search for yield';
     }
   }
 
@@ -369,10 +398,14 @@ export class VixSimpleAgent {
 
   private determineVolatilityAdjustment(regime: string): string {
     switch (regime) {
-      case 'CRISIS': return 'Increase position sizes by 50%, widen stops';
-      case 'ELEVATED': return 'Increase position sizes by 25%, moderate stops';
-      case 'NORMAL': return 'Standard position sizing, normal stops';
-      default: return 'Decrease position sizes by 25%, tighten stops';
+      case 'CRISIS':
+        return 'Increase position sizes by 50%, widen stops';
+      case 'ELEVATED':
+        return 'Increase position sizes by 25%, moderate stops';
+      case 'NORMAL':
+        return 'Standard position sizing, normal stops';
+      default:
+        return 'Decrease position sizes by 25%, tighten stops';
     }
   }
 
@@ -430,10 +463,14 @@ export class VixSimpleAgent {
 
   private getMarketImplication(regime: string): string {
     switch (regime) {
-      case 'CRISIS': return 'significant market stress and potential for rapid reversals';
-      case 'ELEVATED': return 'elevated uncertainty with increased trading opportunities';
-      case 'NORMAL': return 'balanced conditions suitable for most strategies';
-      default: return 'stable environment requiring patience for entry points';
+      case 'CRISIS':
+        return 'significant market stress and potential for rapid reversals';
+      case 'ELEVATED':
+        return 'elevated uncertainty with increased trading opportunities';
+      case 'NORMAL':
+        return 'balanced conditions suitable for most strategies';
+      default:
+        return 'stable environment requiring patience for entry points';
     }
   }
 
@@ -467,9 +504,12 @@ export class VixSimpleAgent {
 
   private determineMarketSignal(vixTrend: string): string {
     switch (vixTrend) {
-      case 'BULLISH': return 'Bearish on equities';
-      case 'BEARISH': return 'Bullish on equities';
-      default: return 'Neutral - mixed signals';
+      case 'BULLISH':
+        return 'Bearish on equities';
+      case 'BEARISH':
+        return 'Bullish on equities';
+      default:
+        return 'Neutral - mixed signals';
     }
   }
 
@@ -498,17 +538,17 @@ export class VixSimpleAgent {
 
   private generateMarketOutlook(regime: string, trend: string): string {
     const regimeOutlook = {
-      'CRISIS': 'High volatility expected with potential for sharp reversals',
-      'ELEVATED': 'Above-average volatility with increased uncertainty',
-      'NORMAL': 'Moderate volatility with balanced market conditions',
-      'CALM': 'Low volatility environment suitable for trend following',
-      'EXTREME_CALM': 'Very low volatility suggesting complacency'
+      CRISIS: 'High volatility expected with potential for sharp reversals',
+      ELEVATED: 'Above-average volatility with increased uncertainty',
+      NORMAL: 'Moderate volatility with balanced market conditions',
+      CALM: 'Low volatility environment suitable for trend following',
+      EXTREME_CALM: 'Very low volatility suggesting complacency',
     };
 
     const trendOutlook = {
-      'BULLISH': 'Increasing volatility may signal market uncertainty',
-      'BEARISH': 'Decreasing volatility suggests improving sentiment',
-      'NEUTRAL': 'Stable volatility pattern expected to continue'
+      BULLISH: 'Increasing volatility may signal market uncertainty',
+      BEARISH: 'Decreasing volatility suggests improving sentiment',
+      NEUTRAL: 'Stable volatility pattern expected to continue',
     };
 
     return `${regimeOutlook[regime as keyof typeof regimeOutlook]}. ${trendOutlook[trend as keyof typeof trendOutlook]}.`;
@@ -520,7 +560,9 @@ export class VixSimpleAgent {
     recommendations.push(`Strategy: ${expertAnalysis.trading_recommendations.strategy}`);
     recommendations.push(`Time horizon: ${expertAnalysis.trading_recommendations.time_horizon}`);
     recommendations.push(`ES Futures bias: ${expertAnalysis.market_implications.es_futures_bias}`);
-    recommendations.push(`Risk management: ${expertAnalysis.trading_recommendations.risk_management}`);
+    recommendations.push(
+      `Risk management: ${expertAnalysis.trading_recommendations.risk_management}`
+    );
 
     return recommendations;
   }

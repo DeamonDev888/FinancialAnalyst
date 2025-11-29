@@ -94,33 +94,18 @@ export class VixPlaywrightScraper {
         // Attendre un court délai pour éviter les race conditions
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        this.browser = await chromium.launch({
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu',
-            '--disable-background-timer-throttling',
-            '--disable-backgrounding-occluded-windows',
-            '--disable-breakpad',
-            '--disable-client-side-phishing-detection',
-            '--disable-component-extensions-with-background-pages',
-            '--disable-extensions-except',
-            '--disable-web-security',
-            '--single-process',
-            '--disable-features=VizDisplayCompositor',
-          ],
-          timeout: 30000,
-        });
+          this.browser = await chromium.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            timeout: 30000,
+          });
 
         console.log('[VixPlaywrightScraper] Browser launched successfully');
       } catch (error) {
         console.error('[VixPlaywrightScraper] Failed to launch browser:', error);
-        throw new Error(`Browser launch failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error(
+          `Browser launch failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
     }
   }
@@ -135,7 +120,9 @@ export class VixPlaywrightScraper {
   private async createStealthPage(): Promise<Page> {
     // Vérifier si le navigateur est initialisé et connecté
     if (!this.browser || !this.browser.isConnected()) {
-      console.log('[VixPlaywrightScraper] Browser disconnected or not initialized, (re)starting...');
+      console.log(
+        '[VixPlaywrightScraper] Browser disconnected or not initialized, (re)starting...'
+      );
       await this.close();
       await this.init();
     }
@@ -180,11 +167,11 @@ export class VixPlaywrightScraper {
       return page;
     } catch (error) {
       console.warn('[VixPlaywrightScraper] Error creating page, attempting one restart...', error);
-      
+
       // Tentative de récupération : redémarrer le navigateur
       await this.close();
       await this.init();
-      
+
       if (!this.browser) throw new Error('Browser recovery failed');
 
       // Réessayer une fois

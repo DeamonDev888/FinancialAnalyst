@@ -1,6 +1,6 @@
 import axios from 'axios';
 import * as dotenv from 'dotenv';
-import { SP500FuturesScraper, SP500FuturesData } from './SP500FuturesScraper';
+import { SP500FuturesScraper } from './SP500FuturesScraper';
 
 dotenv.config();
 

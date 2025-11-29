@@ -359,14 +359,14 @@ ${part2Narrative}
 ${frenchRec}
 
 💹 *ES Futures Analysis | ${(() => {
-        try {
-          return data.created_at && new Date(data.created_at).getTime() > 0
-            ? new Date(data.created_at).toLocaleDateString('fr-FR')
-            : new Date().toLocaleDateString('fr-FR');
-        } catch {
-          return new Date().toLocaleDateString('fr-FR');
-        }
-      })()}*
+      try {
+        return data.created_at && new Date(data.created_at).getTime() > 0
+          ? new Date(data.created_at).toLocaleDateString('fr-FR')
+          : new Date().toLocaleDateString('fr-FR');
+      } catch {
+        return new Date().toLocaleDateString('fr-FR');
+      }
+    })()}*
     `.trim();
 
     return [optimizedMessage1, optimizedMessage2];
@@ -716,7 +716,9 @@ client.on('messageCreate', async message => {
 
   if (message.content.trim().toLowerCase() === '!vixagent') {
     console.log('📊 Processing !vixagent command...');
-    const loadingMsg = await message.reply('📊 **VixSimpleAgent** analyse la volatilité VIX depuis la base... ⏳');
+    const loadingMsg = await message.reply(
+      '📊 **VixSimpleAgent** analyse la volatilité VIX depuis la base... ⏳'
+    );
 
     try {
       const agent = new VixSimpleAgent();
@@ -947,7 +949,8 @@ ${events.length > 10 ? `... et ${events.length - 10} autres événements` : ''}
       const formattedResults = results.map(result => {
         if (result.error) {
           // Truncate error message to avoid hitting Discord limits
-          const errorMsg = result.error.length > 150 ? result.error.substring(0, 150) + '...' : result.error;
+          const errorMsg =
+            result.error.length > 150 ? result.error.substring(0, 150) + '...' : result.error;
           return `❌ **${result.source}**: Erreur - ${errorMsg}`;
         }
 

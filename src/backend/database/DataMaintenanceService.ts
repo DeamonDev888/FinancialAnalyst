@@ -5,16 +5,16 @@ dotenv.config();
 
 export interface MaintenanceConfig {
   // Périodes de rétention
-  rawNewsRetentionDays: number;    // News brutes (peu pertinentes)
+  rawNewsRetentionDays: number; // News brutes (peu pertinentes)
   processedNewsRetentionDays: number; // News traitées
-  analyzedNewsRetentionDays: number;  // News analysées (conservées pour backtesting)
+  analyzedNewsRetentionDays: number; // News analysées (conservées pour backtesting)
 
   // Qualités de données
-  minQualityScoreThreshold: number;  // Score minimum pour garder
-  duplicateThreshold: number;          // Nb max de doublons autorisés
+  minQualityScoreThreshold: number; // Score minimum pour garder
+  duplicateThreshold: number; // Nb max de doublons autorisés
 
   // Paramètres de maintenance
-  batchSize: number;                  // Taille des batchs de traitement
+  batchSize: number; // Taille des batchs de traitement
   preserveHistoricalPeriods: boolean; // Garder périodes historiques importantes
 
   // Périodes importantes à conserver (pour backtesting)
@@ -49,9 +49,9 @@ export interface BacktestDataSummary {
   sentimentDistribution: Record<string, number>;
   sourceDistribution: Record<string, number>;
   qualityScoreDistribution: {
-    high: number;    // > 0.8
-    medium: number;  // 0.6-0.8
-    low: number;     // < 0.6
+    high: number; // > 0.8
+    medium: number; // 0.6-0.8
+    low: number; // < 0.6
   };
   marketEvents: {
     date: Date;
@@ -78,46 +78,46 @@ export class DataMaintenanceService {
 
     // Configuration par défaut optimisée pour le backtesting
     this.config = {
-      rawNewsRetentionDays: 7,        // Garder 7 jours de news brutes
-      processedNewsRetentionDays: 30,  // Garder 30 jours de news traitées
-      analyzedNewsRetentionDays: 365,  // Garder 1 an de news analysées
-      minQualityScoreThreshold: 0.3,  // Score minimum 30%
-      duplicateThreshold: 3,            // Max 3 doublons
-      batchSize: 1000,                 // Batch de 1000 enregistrements
-      preserveHistoricalPeriods: true,   // Garder périodes importantes
+      rawNewsRetentionDays: 7, // Garder 7 jours de news brutes
+      processedNewsRetentionDays: 30, // Garder 30 jours de news traitées
+      analyzedNewsRetentionDays: 365, // Garder 1 an de news analysées
+      minQualityScoreThreshold: 0.3, // Score minimum 30%
+      duplicateThreshold: 3, // Max 3 doublons
+      batchSize: 1000, // Batch de 1000 enregistrements
+      preserveHistoricalPeriods: true, // Garder périodes importantes
       historicalPeriods: [
         {
           name: 'COVID-19 Market Crash',
           startDate: new Date('2020-02-19'),
           endDate: new Date('2020-03-23'),
-          description: 'Crash de marché lié au COVID-19'
+          description: 'Crash de marché lié au COVID-19',
         },
         {
           name: 'GameStop Short Squeeze',
           startDate: new Date('2021-01-13'),
           endDate: new Date('2021-02-02'),
-          description: 'Short squeeze GameStop et actions meme'
+          description: 'Short squeeze GameStop et actions meme',
         },
         {
           name: '2022 Inflation Crisis',
           startDate: new Date('2022-01-01'),
           endDate: new Date('2022-12-31'),
-          description: 'Crise inflationniste de 2022'
+          description: 'Crise inflationniste de 2022',
         },
         {
           name: '2023 Banking Crisis',
           startDate: new Date('2023-03-08'),
           endDate: new Date('2023-03-31'),
-          description: 'Crise bancaire SVB/CS'
+          description: 'Crise bancaire SVB/CS',
         },
         {
           name: '2024 Election Year',
           startDate: new Date('2024-01-01'),
           endDate: new Date('2024-12-31'),
-          description: 'Année électorale américaine 2024'
-        }
+          description: 'Année électorale américaine 2024',
+        },
       ],
-      ...config
+      ...config,
     };
   }
 
@@ -151,10 +151,11 @@ export class DataMaintenanceService {
       const totalTime = Date.now() - startTime;
       const totalRecords = results.reduce((sum, r) => sum + r.recordsAffected, 0);
 
-      console.log(`✅ Maintenance terminée en ${totalTime}ms, ${totalRecords} enregistrements traités`);
+      console.log(
+        `✅ Maintenance terminée en ${totalTime}ms, ${totalRecords} enregistrements traités`
+      );
 
       return results;
-
     } catch (error) {
       const errorResult: MaintenanceResult = {
         timestamp: new Date(),
@@ -167,10 +168,10 @@ export class DataMaintenanceService {
           newsArchived: 0,
           duplicatesRemoved: 0,
           lowQualityRemoved: 0,
-          spaceRecovered: 0
+          spaceRecovered: 0,
         },
         errors: [error instanceof Error ? error.message : String(error)],
-        warnings: []
+        warnings: [],
       };
 
       console.error('❌ Erreur critique lors de la maintenance:', error);
@@ -194,11 +195,18 @@ export class DataMaintenanceService {
       }
 
       // Calculer les seuils de rétention
-      const rawThreshold = new Date(Date.now() - this.config.rawNewsRetentionDays * 24 * 60 * 60 * 1000);
-      const processedThreshold = new Date(Date.now() - this.config.processedNewsRetentionDays * 24 * 60 * 60 * 1000);
-      const analyzedThreshold = new Date(Date.now() - this.config.analyzedNewsRetentionDays * 24 * 60 * 60 * 1000);
+      const rawThreshold = new Date(
+        Date.now() - this.config.rawNewsRetentionDays * 24 * 60 * 60 * 1000
+      );
+      const processedThreshold = new Date(
+        Date.now() - this.config.processedNewsRetentionDays * 24 * 60 * 60 * 1000
+      );
+      const analyzedThreshold = new Date(
+        Date.now() - this.config.analyzedNewsRetentionDays * 24 * 60 * 60 * 1000
+      );
 
-      const result = await client.query(`
+      const result = await client.query(
+        `
         -- News à supprimer (brutes, anciennes, non pertinentes)
         WITH news_to_delete AS (
           SELECT id
@@ -226,7 +234,15 @@ export class DataMaintenanceService {
         DELETE FROM news_items
         WHERE id IN (SELECT id FROM news_to_delete)
         RETURNING id
-      `, [rawThreshold, processedThreshold, this.config.minQualityScoreThreshold, analyzedThreshold, this.config.duplicateThreshold]);
+      `,
+        [
+          rawThreshold,
+          processedThreshold,
+          this.config.minQualityScoreThreshold,
+          analyzedThreshold,
+          this.config.duplicateThreshold,
+        ]
+      );
 
       // Archivage des données importantes pour backtesting
       const archiveResult = await this.archiveImportantData(client);
@@ -245,15 +261,16 @@ export class DataMaintenanceService {
           newsArchived: archiveResult.recordsAffected,
           duplicatesRemoved: 0, // Traité séparément
           lowQualityRemoved: result.rowCount,
-          spaceRecovered: await this.calculateSpaceRecovered(client, 'news_items', result.rowCount)
+          spaceRecovered: await this.calculateSpaceRecovered(client, 'news_items', result.rowCount),
         },
         errors: [],
-        warnings: []
+        warnings: [],
       };
 
-      console.log(`✅ Maintenance news terminée: ${result.rowCount} supprimées, ${archiveResult.recordsAffected} archivées`);
+      console.log(
+        `✅ Maintenance news terminée: ${result.rowCount} supprimées, ${archiveResult.recordsAffected} archivées`
+      );
       return maintenanceResult;
-
     } finally {
       client.release();
     }
@@ -273,16 +290,21 @@ export class DataMaintenanceService {
 
     // Marquer les données dans les périodes importantes
     for (const period of this.config.historicalPeriods) {
-      await client.query(`
+      await client.query(
+        `
         UPDATE news_items
         SET is_historical_preservation = true,
             processing_status = 'analyzed',
             data_quality_score = GREATEST(data_quality_score, 0.8)
         WHERE published_at BETWEEN $1 AND $2
           AND data_quality_score >= 0.6
-      `, [period.startDate, period.endDate]);
+      `,
+        [period.startDate, period.endDate]
+      );
 
-      console.log(`   📍 Période conservée: ${period.name} (${period.startDate.toISOString().split('T')[0]} - ${period.endDate.toISOString().split('T')[0]})`);
+      console.log(
+        `   📍 Période conservée: ${period.name} (${period.startDate.toISOString().split('T')[0]} - ${period.endDate.toISOString().split('T')[0]})`
+      );
     }
   }
 
@@ -359,10 +381,9 @@ export class DataMaintenanceService {
         const idsToRemove = group.ordered_ids.slice(1);
 
         if (idsToRemove.length > 0) {
-          const result = await client.query(
-            `DELETE FROM news_items WHERE id = ANY($1)`,
-            [idsToRemove]
-          );
+          const result = await client.query(`DELETE FROM news_items WHERE id = ANY($1)`, [
+            idsToRemove,
+          ]);
           totalRemoved += result.rowCount;
         }
       }
@@ -378,15 +399,14 @@ export class DataMaintenanceService {
           newsArchived: 0,
           duplicatesRemoved: totalRemoved,
           lowQualityRemoved: 0,
-          spaceRecovered: await this.calculateSpaceRecovered(client, 'news_items', totalRemoved)
+          spaceRecovered: await this.calculateSpaceRecovered(client, 'news_items', totalRemoved),
         },
         errors: [],
-        warnings: []
+        warnings: [],
       };
 
       console.log(`✅ Nettoyage doublons terminé: ${totalRemoved} doublons supprimés`);
       return maintenanceResult;
-
     } finally {
       client.release();
     }
@@ -403,14 +423,17 @@ export class DataMaintenanceService {
       console.log('🗑️ Nettoyage des données de faible qualité...');
 
       // Supprimer les données de très faible qualité
-      const result = await client.query(`
+      const result = await client.query(
+        `
         DELETE FROM news_items
         WHERE
           data_quality_score < $1 OR
           (LENGTH(TRIM(title)) < 15 OR title ~ '[A-Z]{4,}') OR
           (url ~ 'bit\.ly|tinyurl|t\.co|goo\.gl' AND data_quality_score < 0.7)
         RETURNING id
-      `, [this.config.minQualityScoreThreshold]);
+      `,
+        [this.config.minQualityScoreThreshold]
+      );
 
       const maintenanceResult: MaintenanceResult = {
         timestamp: new Date(),
@@ -423,15 +446,16 @@ export class DataMaintenanceService {
           newsArchived: 0,
           duplicatesRemoved: 0,
           lowQualityRemoved: result.rowCount,
-          spaceRecovered: await this.calculateSpaceRecovered(client, 'news_items', result.rowCount)
+          spaceRecovered: await this.calculateSpaceRecovered(client, 'news_items', result.rowCount),
         },
         errors: [],
-        warnings: []
+        warnings: [],
       };
 
-      console.log(`✅ Nettoyage faible qualité terminé: ${result.rowCount} enregistrements supprimés`);
+      console.log(
+        `✅ Nettoyage faible qualité terminé: ${result.rowCount} enregistrements supprimés`
+      );
       return maintenanceResult;
-
     } finally {
       client.release();
     }
@@ -483,15 +507,14 @@ export class DataMaintenanceService {
           newsArchived: totalArchived,
           duplicatesRemoved: 0,
           lowQualityRemoved: 0,
-          spaceRecovered: 0 // Archive doesn't recover space immediately
+          spaceRecovered: 0, // Archive doesn't recover space immediately
         },
         errors: [],
-        warnings: []
+        warnings: [],
       };
 
       console.log(`✅ Archivage terminé: ${totalArchived} enregistrements archivés`);
       return maintenanceResult;
-
     } finally {
       client.release();
     }
@@ -572,15 +595,14 @@ export class DataMaintenanceService {
           newsArchived: 0,
           duplicatesRemoved: 0,
           lowQualityRemoved: 0,
-          spaceRecovered: 0 // Optimization doesn't immediately recover space
+          spaceRecovered: 0, // Optimization doesn't immediately recover space
         },
         errors: [],
-        warnings: []
+        warnings: [],
       };
 
       console.log(`✅ Optimisation terminée: ${optimizedTables} tables optimisées`);
       return maintenanceResult;
-
     } finally {
       client.release();
     }
@@ -645,15 +667,14 @@ export class DataMaintenanceService {
           newsArchived: 0,
           duplicatesRemoved: 0,
           lowQualityRemoved: 0,
-          spaceRecovered: 0
+          spaceRecovered: 0,
         },
         errors: [],
-        warnings: []
+        warnings: [],
       };
 
       console.log('✅ Statistiques mises à jour');
       return maintenanceResult;
-
     } finally {
       client.release();
     }
@@ -662,7 +683,11 @@ export class DataMaintenanceService {
   /**
    * Calculer l'espace récupéré
    */
-  private async calculateSpaceRecovered(client: any, table: string, rowsDeleted: number): Promise<number> {
+  private async calculateSpaceRecovered(
+    client: any,
+    table: string,
+    rowsDeleted: number
+  ): Promise<number> {
     try {
       const result = await client.query(`
         SELECT pg_relation_size('${table}') as table_size,
@@ -672,7 +697,7 @@ export class DataMaintenanceService {
 
       if (result.rows.length > 0 && result.rows[0].avg_row_size) {
         const avgRowSize = result.rows[0].avg_row_size;
-        return Math.round((rowsDeleted * avgRowSize) / (1024 * 1024) * 100) / 100; // MB
+        return Math.round(((rowsDeleted * avgRowSize) / (1024 * 1024)) * 100) / 100; // MB
       }
       return 0;
     } catch {
@@ -733,7 +758,7 @@ export class DataMaintenanceService {
       const marketEvents = this.config.historicalPeriods.map(period => ({
         date: period.startDate,
         description: period.description,
-        importance: 'critical' as const
+        importance: 'critical' as const,
       }));
 
       const global = globalStats.rows[0];
@@ -742,16 +767,16 @@ export class DataMaintenanceService {
         totalNews: parseInt(global.total_news),
         dateRange: {
           start: new Date(global.earliest_date),
-          end: new Date(global.latest_date)
+          end: new Date(global.latest_date),
         },
         sentimentDistribution: {},
         sourceDistribution: {},
         qualityScoreDistribution: {
           high: parseInt(qualityStats.rows[0]?.high || 0),
           medium: parseInt(qualityStats.rows[0]?.medium || 0),
-          low: parseInt(qualityStats.rows[0]?.low || 0)
+          low: parseInt(qualityStats.rows[0]?.low || 0),
         },
-        marketEvents
+        marketEvents,
       };
 
       // Remplir les distributions
@@ -764,7 +789,6 @@ export class DataMaintenanceService {
       });
 
       return summary;
-
     } finally {
       client.release();
     }

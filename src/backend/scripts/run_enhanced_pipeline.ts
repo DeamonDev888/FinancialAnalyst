@@ -6,9 +6,11 @@ console.log('🚀 Démarrage du Pipeline Amélioré...');
 
 const pipeline = new EnhancedNewsPipeline();
 
-pipeline.runPipeline()
+pipeline
+  .runPipeline()
   .then(result => {
-    const successRate = result.total.itemsFound > 0 ? result.total.itemsSaved / result.total.itemsFound : 0;
+    const successRate =
+      result.total.itemsFound > 0 ? result.total.itemsSaved / result.total.itemsFound : 0;
 
     console.log('\n📋 RÉSULTATS DU PIPELINE:');
     console.log(`• Total items: ${result.total.itemsFound.toLocaleString()}`);
@@ -53,17 +55,27 @@ pipeline.runPipeline()
       console.log('\n🎉 PIPELINE TERMINÉ AVEC GRAND SUCCÈS');
       console.log('   • Aucune erreur critique');
       console.log(`   • Taux de réussite excellent: ${(successRate * 100).toFixed(1)}%`);
-      console.log(`   • Qualité des données bonne: ${(result.total.avgQualityScore * 100).toFixed(1)}%`);
+      console.log(
+        `   • Qualité des données bonne: ${(result.total.avgQualityScore * 100).toFixed(1)}%`
+      );
       process.exit(0);
-    } else if (result.errors.length === 0 && successRate > 0.6 && result.total.avgQualityScore > 0.4) {
+    } else if (
+      result.errors.length === 0 &&
+      successRate > 0.6 &&
+      result.total.avgQualityScore > 0.4
+    ) {
       console.log('\n🟡 PIPELINE TERMINÉ AVEC SUCCÈS PARTIEL');
       console.log(`   • Taux de réussite acceptable: ${(successRate * 100).toFixed(1)}%`);
-      console.log(`   • Qualité des données moyenne: ${(result.total.avgQualityScore * 100).toFixed(1)}%`);
+      console.log(
+        `   • Qualité des données moyenne: ${(result.total.avgQualityScore * 100).toFixed(1)}%`
+      );
       process.exit(1);
     } else {
       console.log('\n🔴 PIPELINE TERMINÉ AVEC DES PROBLÈMES');
       console.log(`   • Taux de réussite faible: ${(successRate * 100).toFixed(1)}%`);
-      console.log(`   • Qualité des données faible: ${(result.total.avgQualityScore * 100).toFixed(1)}%`);
+      console.log(
+        `   • Qualité des données faible: ${(result.total.avgQualityScore * 100).toFixed(1)}%`
+      );
       console.log(`   • Erreurs critiques: ${result.errors.length}`);
       process.exit(2);
     }

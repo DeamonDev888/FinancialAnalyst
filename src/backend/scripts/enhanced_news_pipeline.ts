@@ -1,7 +1,11 @@
 #!/usr/bin/env ts-node
 
 import { NewsAggregator, NewsItem } from '../ingestion/NewsAggregator';
-import { NewsValidationService, ValidationResult, ProcessedNewsItem } from '../database/NewsValidationService';
+import {
+  NewsValidationService,
+  ValidationResult,
+  ProcessedNewsItem,
+} from '../database/NewsValidationService';
 import { NewsDatabaseService } from '../database/NewsDatabaseService';
 import { DataMaintenanceService } from '../database/DataMaintenanceService';
 import { VixPlaywrightScraper } from '../ingestion/VixPlaywrightScraper';
@@ -75,7 +79,7 @@ export class EnhancedNewsPipeline {
     batchSize: 100,
     maxParallelSources: 3,
     enableBacktestData: true,
-    preserveHistoricalEvents: true
+    preserveHistoricalEvents: true,
   };
 
   constructor(config?: Partial<PipelineConfig>) {
@@ -95,7 +99,9 @@ export class EnhancedNewsPipeline {
   async runPipeline(): Promise<PipelineResult> {
     const startTime = new Date();
     console.log('🚀 Démarrage du Pipeline Amélioré de News avec Validation et Déduplication');
-    console.log(`⚙️ Configuration: Validation=${this.config.enableValidation}, Déduplication=${this.config.enableDeduplication}, Qualité=${this.config.enableQualityFiltering}`);
+    console.log(
+      `⚙️ Configuration: Validation=${this.config.enableValidation}, Déduplication=${this.config.enableDeduplication}, Qualité=${this.config.enableQualityFiltering}`
+    );
     console.log(`📊 Score qualité minimum: ${this.config.minQualityScore * 100}%\n`);
 
     const result: PipelineResult = {
@@ -109,13 +115,13 @@ export class EnhancedNewsPipeline {
         duplicatesRemoved: 0,
         lowQualityRemoved: 0,
         avgQualityScore: 0,
-        spaceRecovered: 0
+        spaceRecovered: 0,
       },
       marketData: {
-        timestamp: new Date()
+        timestamp: new Date(),
       },
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     try {
@@ -131,7 +137,10 @@ export class EnhancedNewsPipeline {
       if (this.config.enableDeduplication) {
         console.log('2️⃣ Maintenance rapide de la base de données...');
         const maintenanceResults = await this.maintenanceService.performMaintenance();
-        const spaceRecovered = maintenanceResults.reduce((sum, r) => sum + (r.details.spaceRecovered || 0), 0);
+        const spaceRecovered = maintenanceResults.reduce(
+          (sum, r) => sum + (r.details.spaceRecovered || 0),
+          0
+        );
         result.total.spaceRecovered = spaceRecovered;
         console.log(`✅ Maintenance terminée: ${spaceRecovered.toFixed(1)}MB récupérés\n`);
       }
@@ -140,7 +149,9 @@ export class EnhancedNewsPipeline {
       if (this.config.enableMarketData || this.config.enableVIXData) {
         console.log('3️⃣ Récupération des données de marché...');
         await this.fetchMarketData(result);
-        console.log(`✅ Données marché: VIX=${result.marketData.vixValue}, S&P500=${result.marketData.sp500Value}\n`);
+        console.log(
+          `✅ Données marché: VIX=${result.marketData.vixValue}, S&P500=${result.marketData.sp500Value}\n`
+        );
       }
 
       // 4. Récupération des nouvelles depuis toutes les sources
@@ -160,10 +171,16 @@ export class EnhancedNewsPipeline {
         console.log('5️⃣ Validation et nettoyage des nouvelles...');
         const validationResults = await this.validateNewsBatch(allNews);
         result.total.itemsValidated = validationResults.filter(r => r.isValid).length;
-        result.total.duplicatesRemoved = validationResults.filter(r => r.errors.some(e => e.includes('Doublon'))).length;
-        result.total.lowQualityRemoved = validationResults.filter(r => !r.isValid && r.errors.some(e => e.includes('faible qualité'))).length;
+        result.total.duplicatesRemoved = validationResults.filter(r =>
+          r.errors.some(e => e.includes('Doublon'))
+        ).length;
+        result.total.lowQualityRemoved = validationResults.filter(
+          r => !r.isValid && r.errors.some(e => e.includes('faible qualité'))
+        ).length;
 
-        console.log(`✅ Validation terminée: ${result.total.itemsValidated}/${allNews.length} valides`);
+        console.log(
+          `✅ Validation terminée: ${result.total.itemsValidated}/${allNews.length} valides`
+        );
         console.log(`   🗑️ Doublons détectés: ${result.total.duplicatesRemoved}`);
         console.log(`   📉 Faible qualité: ${result.total.lowQualityRemoved}\n`);
 
@@ -182,9 +199,12 @@ export class EnhancedNewsPipeline {
         }
 
         // Calculer le score de qualité moyen
-        const totalQuality = validResults.reduce((sum, r) => sum + (r.processedItem?.data_quality_score || 0), 0);
-        result.total.avgQualityScore = validResults.length > 0 ? totalQuality / validResults.length : 0;
-
+        const totalQuality = validResults.reduce(
+          (sum, r) => sum + (r.processedItem?.data_quality_score || 0),
+          0
+        );
+        result.total.avgQualityScore =
+          validResults.length > 0 ? totalQuality / validResults.length : 0;
       } else {
         // Mode sans validation - sauvegarde directe
         console.log('5️⃣ Sauvegarde directe (sans validation)...');
@@ -198,8 +218,12 @@ export class EnhancedNewsPipeline {
       if (this.config.enableBacktestData) {
         console.log('7️⃣ Archivage des données importantes pour backtesting...');
         const backtestReport = await this.maintenanceService.generateBacktestReport();
-        console.log(`✅ Données backtesting disponibles: ${backtestReport.totalNews.toLocaleString()} items`);
-        console.log(`   📅 Période: ${backtestReport.dateRange.start.toISOString().split('T')[0]} - ${backtestReport.dateRange.end.toISOString().split('T')[0]}`);
+        console.log(
+          `✅ Données backtesting disponibles: ${backtestReport.totalNews.toLocaleString()} items`
+        );
+        console.log(
+          `   📅 Période: ${backtestReport.dateRange.start.toISOString().split('T')[0]} - ${backtestReport.dateRange.end.toISOString().split('T')[0]}`
+        );
         console.log(`   🏛️ Événements historiques: ${backtestReport.marketEvents.length}\n`);
       }
 
@@ -208,9 +232,10 @@ export class EnhancedNewsPipeline {
       await this.updatePipelineStatistics(result);
 
       return await this.finalizePipeline(result, startTime);
-
     } catch (error) {
-      result.errors.push(`Erreur critique du pipeline: ${error instanceof Error ? error.message : String(error)}`);
+      result.errors.push(
+        `Erreur critique du pipeline: ${error instanceof Error ? error.message : String(error)}`
+      );
       console.error('❌ Erreur critique du pipeline:', error);
       return await this.finalizePipeline(result, startTime);
     } finally {
@@ -260,7 +285,7 @@ export class EnhancedNewsPipeline {
         console.log(`   ✅ VIX: ${validVIX.value} (source: ${validVIX.source})`);
 
         // Sauvegarder en base de données
-        const pool = new (require('pg')).Pool({
+        const pool = new (require('pg').Pool)({
           host: process.env.DB_HOST || 'localhost',
           port: parseInt(process.env.DB_PORT || '5432'),
           database: process.env.DB_NAME || 'financial_analyst',
@@ -270,7 +295,8 @@ export class EnhancedNewsPipeline {
 
         const client = await pool.connect();
         try {
-          await client.query(`
+          await client.query(
+            `
             INSERT INTO market_data (symbol, asset_type, price, change, change_percent, source, timestamp)
             VALUES ($1, $2, $3, $4, $5, $6, NOW())
             ON CONFLICT (symbol, timestamp::date) DO UPDATE SET
@@ -278,10 +304,16 @@ export class EnhancedNewsPipeline {
               change = EXCLUDED.change,
               change_percent = EXCLUDED.change_percent,
               timestamp = EXCLUDED.timestamp
-          `, [
-            'VIX', 'VOLATILITY', validVIX.value,
-            validVIX.change_abs, validVIX.change_pct, validVIX.source
-          ]);
+          `,
+            [
+              'VIX',
+              'VOLATILITY',
+              validVIX.value,
+              validVIX.change_abs,
+              validVIX.change_pct,
+              validVIX.source,
+            ]
+          );
         } finally {
           client.release();
           await pool.end();
@@ -290,7 +322,9 @@ export class EnhancedNewsPipeline {
         console.log('   ⚠️ Impossible de récupérer les données VIX');
       }
     } catch (error) {
-      result.warnings.push(`Erreur récupération VIX: ${error instanceof Error ? error.message : error}`);
+      result.warnings.push(
+        `Erreur récupération VIX: ${error instanceof Error ? error.message : error}`
+      );
       console.warn('   ⚠️ Erreur VIX:', error);
     }
   }
@@ -305,10 +339,12 @@ export class EnhancedNewsPipeline {
 
       if (sp500Data && sp500Data.current > 0) {
         result.marketData.sp500Value = sp500Data.current;
-        console.log(`   ✅ S&P500: ${sp500Data.current.toFixed(2)} (${sp500Data.change > 0 ? '+' : ''}${sp500Data.percent_change.toFixed(2)}%)`);
+        console.log(
+          `   ✅ S&P500: ${sp500Data.current.toFixed(2)} (${sp500Data.change > 0 ? '+' : ''}${sp500Data.percent_change.toFixed(2)}%)`
+        );
 
         // Sauvegarder en base de données
-        const pool = new (require('pg')).Pool({
+        const pool = new (require('pg').Pool)({
           host: process.env.DB_HOST || 'localhost',
           port: parseInt(process.env.DB_PORT || '5432'),
           database: process.env.DB_NAME || 'financial_analyst',
@@ -318,7 +354,8 @@ export class EnhancedNewsPipeline {
 
         const client = await pool.connect();
         try {
-          await client.query(`
+          await client.query(
+            `
             INSERT INTO market_data (symbol, asset_type, price, change, change_percent, high, low, open, previous_close, source, timestamp)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
             ON CONFLICT (symbol, timestamp::date) DO UPDATE SET
@@ -330,11 +367,20 @@ export class EnhancedNewsPipeline {
               open = EXCLUDED.open,
               previous_close = EXCLUDED.previous_close,
               timestamp = EXCLUDED.timestamp
-          `, [
-            sp500Data.symbol || 'SP500', 'INDEX', sp500Data.current,
-            sp500Data.change, sp500Data.percent_change, sp500Data.high,
-            sp500Data.low, sp500Data.open, sp500Data.previous_close, sp500Data.symbol || 'Finnhub'
-          ]);
+          `,
+            [
+              sp500Data.symbol || 'SP500',
+              'INDEX',
+              sp500Data.current,
+              sp500Data.change,
+              sp500Data.percent_change,
+              sp500Data.high,
+              sp500Data.low,
+              sp500Data.open,
+              sp500Data.previous_close,
+              sp500Data.symbol || 'Finnhub',
+            ]
+          );
         } finally {
           client.release();
           await pool.end();
@@ -343,7 +389,9 @@ export class EnhancedNewsPipeline {
         console.log('   ⚠️ Impossible de récupérer les données S&P500');
       }
     } catch (error) {
-      result.warnings.push(`Erreur récupération S&P500: ${error instanceof Error ? error.message : error}`);
+      result.warnings.push(
+        `Erreur récupération S&P500: ${error instanceof Error ? error.message : error}`
+      );
       console.warn('   ⚠️ Erreur S&P500:', error);
     }
   }
@@ -360,7 +408,10 @@ export class EnhancedNewsPipeline {
       { name: 'FinancialJuice', func: () => this.newsAggregator.fetchFinancialJuice() },
       { name: 'Finnhub', func: () => this.newsAggregator.fetchFinnhubNews() },
       { name: 'FRED Economic Data', func: () => this.newsAggregator.fetchFredEconomicData() },
-      { name: 'Trading Economics', func: () => this.newsAggregator.fetchTradingEconomicsCalendar() }
+      {
+        name: 'Trading Economics',
+        func: () => this.newsAggregator.fetchTradingEconomicsCalendar(),
+      },
     ];
 
     // Exécuter en parallèle avec limite
@@ -377,8 +428,15 @@ export class EnhancedNewsPipeline {
           console.log(`       ✅ ${source.name}: ${news.length} items (${duration}ms)`);
           return { name: source.name, news, success: true };
         } catch (error) {
-          console.log(`       ❌ ${source.name}: ${error instanceof Error ? error.message : error}`);
-          return { name: source.name, news: [], success: false, error: error instanceof Error ? error.message : String(error) };
+          console.log(
+            `       ❌ ${source.name}: ${error instanceof Error ? error.message : error}`
+          );
+          return {
+            name: source.name,
+            news: [],
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
         }
       });
 
@@ -397,7 +455,9 @@ export class EnhancedNewsPipeline {
       allNews.push(...result.news);
     });
 
-    console.log(`   📊 Total récupéré: ${allNews.length} items de ${results.filter(r => r.success).length}/${sources.length} sources`);
+    console.log(
+      `   📊 Total récupéré: ${allNews.length} items de ${results.filter(r => r.success).length}/${sources.length} sources`
+    );
     return allNews;
   }
 
@@ -409,14 +469,18 @@ export class EnhancedNewsPipeline {
     const results: ValidationResult[] = [];
     for (let i = 0; i < news.length; i += this.config.batchSize) {
       const batch = news.slice(i, i + this.config.batchSize);
-      console.log(`   🔍 Validation batch ${Math.floor(i / this.config.batchSize) + 1}/${Math.ceil(news.length / this.config.batchSize)} (${batch.length} items)...`);
+      console.log(
+        `   🔍 Validation batch ${Math.floor(i / this.config.batchSize) + 1}/${Math.ceil(news.length / this.config.batchSize)} (${batch.length} items)...`
+      );
 
       try {
         const batchResults = await this.validationService.validateNewsBatch(batch);
         results.push(...batchResults);
 
         const validInBatch = batchResults.filter(r => r.isValid).length;
-        console.log(`       ✅ ${validInBatch}/${batch.length} valides (score moyen: ${(batchResults.reduce((sum, r) => sum + (r.qualityScore || 0), 0) / batchResults.length * 100).toFixed(1)}%)`);
+        console.log(
+          `       ✅ ${validInBatch}/${batch.length} valides (score moyen: ${((batchResults.reduce((sum, r) => sum + (r.qualityScore || 0), 0) / batchResults.length) * 100).toFixed(1)}%)`
+        );
       } catch (error) {
         console.warn(`       ⚠️ Erreur validation batch:`, error);
         // Ajouter des résultats par défaut pour éviter la perte
@@ -426,7 +490,7 @@ export class EnhancedNewsPipeline {
             qualityScore: 0,
             errors: [error instanceof Error ? error.message : String(error)],
             warnings: [],
-            appliedRules: []
+            appliedRules: [],
           });
         });
       }
@@ -443,9 +507,13 @@ export class EnhancedNewsPipeline {
       const dbStats = await this.databaseService.getDatabaseStats();
 
       console.log('📊 STATISTIQUES FINALES:');
-      console.log(`   • News totales en base: ${dbStats.news?.total_news?.toLocaleString() || 'N/A'}`);
+      console.log(
+        `   • News totales en base: ${dbStats.news?.total_news?.toLocaleString() || 'N/A'}`
+      );
       console.log(`   • News aujourd'hui: ${dbStats.news?.today_news?.toLocaleString() || 'N/A'}`);
-      console.log(`   • Sources actives: ${dbStats.sources?.filter((s: any) => s.is_active).length || 'N/A'}`);
+      console.log(
+        `   • Sources actives: ${dbStats.sources?.filter((s: any) => s.is_active).length || 'N/A'}`
+      );
       console.log(`   • Analyses de sentiment: ${dbStats.analyses?.total_analyses || 'N/A'}`);
 
       if (result.marketData.vixValue) {
@@ -457,7 +525,6 @@ export class EnhancedNewsPipeline {
 
       console.log(`   • Score qualité moyen: ${(result.total.avgQualityScore * 100).toFixed(1)}%`);
       console.log(`   • Espace récupéré: ${result.total.spaceRecovered.toFixed(1)} MB`);
-
     } catch (error) {
       console.warn('⚠️ Erreur mise à jour statistiques:', error);
     }
@@ -478,7 +545,9 @@ export class EnhancedNewsPipeline {
     console.log(`💾 Nouvelles sauvegardées: ${result.total.itemsSaved.toLocaleString()}`);
 
     if (result.total.duplicatesRemoved > 0) {
-      console.log(`🔄 Doublons détectés/retirés: ${result.total.duplicatesRemoved.toLocaleString()}`);
+      console.log(
+        `🔄 Doublons détectés/retirés: ${result.total.duplicatesRemoved.toLocaleString()}`
+      );
     }
 
     if (result.total.lowQualityRemoved > 0) {
@@ -522,18 +591,23 @@ export class EnhancedNewsPipeline {
     console.log('='.repeat(80));
 
     // Évaluation du succès
-    const successRate = result.total.itemsFound > 0 ? result.total.itemsSaved / result.total.itemsFound : 0;
+    const successRate =
+      result.total.itemsFound > 0 ? result.total.itemsSaved / result.total.itemsFound : 0;
     const qualitySuccess = result.total.avgQualityScore >= this.config.minQualityScore;
 
     if (result.errors.length === 0 && successRate > 0.7 && qualitySuccess) {
       console.log('🎉 PIPELINE TERMINÉ AVEC SUCCÈS');
       console.log(`   • Taux de réussite: ${(successRate * 100).toFixed(1)}%`);
-      console.log(`   • Qualité supérieure au seuil: ${(result.total.avgQualityScore * 100).toFixed(1)}% >= ${(this.config.minQualityScore * 100)}%`);
+      console.log(
+        `   • Qualité supérieure au seuil: ${(result.total.avgQualityScore * 100).toFixed(1)}% >= ${this.config.minQualityScore * 100}%`
+      );
     } else if (result.errors.length === 0 && successRate > 0.4) {
       console.log('🟡 PIPELINE TERMINÉ AVEC RÉSULTATS PARTIELS');
       console.log(`   • Taux de réussite: ${(successRate * 100).toFixed(1)}% (objectif: >70%)`);
       if (!qualitySuccess) {
-        console.log(`   • Qualité inférieure au seuil: ${(result.total.avgQualityScore * 100).toFixed(1)}% < ${(this.config.minQualityScore * 100)}%`);
+        console.log(
+          `   • Qualité inférieure au seuil: ${(result.total.avgQualityScore * 100).toFixed(1)}% < ${this.config.minQualityScore * 100}%`
+        );
       }
     } else {
       console.log('🔴 PIPELINE TERMINÉ AVEC DES PROBLÈMES');
@@ -551,7 +625,7 @@ export class EnhancedNewsPipeline {
 if (require.main === module) {
   // Parser des arguments
   const args = process.argv.slice(2);
-  let config: Partial<PipelineConfig> = {};
+  const config: Partial<PipelineConfig> = {};
 
   if (args.includes('--disable-validation')) {
     config.enableValidation = false;
@@ -620,19 +694,21 @@ Exemples:
 
   // Démarrer le pipeline
   console.log('🔧 Démarrage du Pipeline Amélioré avec configuration:');
-  console.log(`   Validation: ${config.enableValidation ?? true ? '✅' : '❌'}`);
-  console.log(`   Déduplication: ${config.enableDeduplication ?? true ? '✅' : '❌'}`);
-  console.log(`   Filtrage qualité: ${config.enableQualityFiltering ?? true ? '✅' : '❌'}`);
-  console.log(`   Données marché: ${config.enableMarketData ?? true ? '✅' : '❌'}`);
-  console.log(`   Données VIX: ${config.enableVIXData ?? true ? '✅' : '❌'}`);
+  console.log(`   Validation: ${(config.enableValidation ?? true) ? '✅' : '❌'}`);
+  console.log(`   Déduplication: ${(config.enableDeduplication ?? true) ? '✅' : '❌'}`);
+  console.log(`   Filtrage qualité: ${(config.enableQualityFiltering ?? true) ? '✅' : '❌'}`);
+  console.log(`   Données marché: ${(config.enableMarketData ?? true) ? '✅' : '❌'}`);
+  console.log(`   Données VIX: ${(config.enableVIXData ?? true) ? '✅' : '❌'}`);
   console.log(`   Score qualité minimum: ${(config.minQualityScore ?? 0.4) * 100}%`);
   console.log(`   Taille batch: ${config.batchSize ?? 100}\n`);
 
   const pipeline = new EnhancedNewsPipeline(config);
 
-  pipeline.runPipeline()
+  pipeline
+    .runPipeline()
     .then(result => {
-      const successRate = result.total.itemsFound > 0 ? result.total.itemsSaved / result.total.itemsFound : 0;
+      const successRate =
+        result.total.itemsFound > 0 ? result.total.itemsSaved / result.total.itemsFound : 0;
 
       if (successRate > 0.8 && result.errors.length === 0) {
         console.log('\n🎉 PIPELINE AMÉLIORÉ TERMINÉ AVEC GRAND SUCCÈS');

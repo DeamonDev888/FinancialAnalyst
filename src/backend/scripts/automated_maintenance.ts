@@ -31,7 +31,7 @@ interface MaintenanceStats {
   success: boolean;
 }
 
-export class AutomatedMaintenanceService {
+class AutomatedMaintenanceService {
   private maintenanceService: DataMaintenanceService;
   private validationService: NewsValidationService;
   private newsService: NewsDatabaseService;
@@ -42,32 +42,32 @@ export class AutomatedMaintenanceService {
       name: 'hourly_quick_cleanup',
       cron: '0 * * * *', // Chaque heure
       description: 'Nettoyage rapide des données récentes',
-      enabled: true
+      enabled: true,
     },
     {
       name: 'daily_deep_validation',
       cron: '0 2 * * *', // 2h du matin chaque jour
       description: 'Validation complète et nettoyage quotidien',
-      enabled: true
+      enabled: true,
     },
     {
       name: 'weekly_optimization',
       cron: '0 3 * * 0', // 3h du matin chaque dimanche
       description: 'Optimisation hebdomadaire de la base de données',
-      enabled: true
+      enabled: true,
     },
     {
       name: 'monthly_archive',
       cron: '0 4 1 * *', // 4h du matin le 1er de chaque mois
       description: 'Archivage mensuel des anciennes données',
-      enabled: true
+      enabled: true,
     },
     {
       name: 'quarterly_report',
       cron: '0 5 1 1,4,7,10 *', // 5h du matin le 1er janvier, avril, juillet, octobre
       description: 'Rapport trimestriel de qualité des données',
-      enabled: true
-    }
+      enabled: true,
+    },
   ];
 
   private stats: MaintenanceStats[] = [];
@@ -151,7 +151,7 @@ export class AutomatedMaintenanceService {
       spaceRecovered: 0,
       errors: [],
       warnings: [],
-      success: true
+      success: true,
     };
 
     this.isRunning = true;
@@ -170,15 +170,25 @@ export class AutomatedMaintenanceService {
       maintenanceStats.operationsCompleted++;
       console.log('\n2️⃣ Maintenance complète des données...');
       const maintenanceResults = await this.maintenanceService.performMaintenance();
-      maintenanceStats.recordsProcessed += maintenanceResults.reduce((sum, r) => sum + r.recordsAffected, 0);
-      maintenanceStats.spaceRecovered += maintenanceResults.reduce((sum, r) => sum + (r.details.spaceRecovered || 0), 0);
+      maintenanceStats.recordsProcessed += maintenanceResults.reduce(
+        (sum, r) => sum + r.recordsAffected,
+        0
+      );
+      maintenanceStats.spaceRecovered += maintenanceResults.reduce(
+        (sum, r) => sum + (r.details.spaceRecovered || 0),
+        0
+      );
 
       // 3. Rapport de backtesting
       maintenanceStats.operationsCompleted++;
       console.log('\n3️⃣ Génération du rapport de backtesting...');
       const backtestReport = await this.maintenanceService.generateBacktestReport();
-      console.log(`📈 Données pour backtesting: ${backtestReport.totalNews.toLocaleString()} items`);
-      console.log(`📅 Période: ${backtestReport.dateRange.start.toISOString().split('T')[0]} - ${backtestReport.dateRange.end.toISOString().split('T')[0]}`);
+      console.log(
+        `📈 Données pour backtesting: ${backtestReport.totalNews.toLocaleString()} items`
+      );
+      console.log(
+        `📅 Période: ${backtestReport.dateRange.start.toISOString().split('T')[0]} - ${backtestReport.dateRange.end.toISOString().split('T')[0]}`
+      );
 
       // 4. Rapport de qualité
       maintenanceStats.operationsCompleted++;
@@ -186,7 +196,8 @@ export class AutomatedMaintenanceService {
       await this.generateQualityReport();
 
       maintenanceStats.endTime = new Date();
-      maintenanceStats.duration = maintenanceStats.endTime.getTime() - maintenanceStats.startTime.getTime();
+      maintenanceStats.duration =
+        maintenanceStats.endTime.getTime() - maintenanceStats.startTime.getTime();
       maintenanceStats.success = maintenanceStats.errors.length === 0;
 
       this.stats.push(maintenanceStats);
@@ -197,7 +208,9 @@ export class AutomatedMaintenanceService {
       console.log('✅ MAINTENANCE TERMINÉE AVEC SUCCÈS');
       console.log('='.repeat(80));
       console.log(`📊 Opérations: ${maintenanceStats.operationsCompleted}`);
-      console.log(`📈 Enregistrements traités: ${maintenanceStats.recordsProcessed.toLocaleString()}`);
+      console.log(
+        `📈 Enregistrements traités: ${maintenanceStats.recordsProcessed.toLocaleString()}`
+      );
       console.log(`💾 Espace récupéré: ${maintenanceStats.spaceRecovered.toFixed(1)} MB`);
       console.log(`⏱️ Durée: ${(maintenanceStats.duration / 1000).toFixed(1)} secondes`);
 
@@ -214,10 +227,11 @@ export class AutomatedMaintenanceService {
           console.log(`   • ${warning}`);
         });
       }
-
     } catch (error) {
       maintenanceStats.success = false;
-      maintenanceStats.errors.push(`Erreur critique: ${error instanceof Error ? error.message : String(error)}`);
+      maintenanceStats.errors.push(
+        `Erreur critique: ${error instanceof Error ? error.message : String(error)}`
+      );
       console.error('❌ Erreur lors de la maintenance:', error);
     } finally {
       this.isRunning = false;
@@ -241,8 +255,9 @@ export class AutomatedMaintenanceService {
         console.log(`   📰 ${recentNews.length} news récentes validées`);
       }
 
-      console.log(`✅ Nettoyage horaire terminé: ${duplicateCleanup.details.newsDeleted} doublons supprimés`);
-
+      console.log(
+        `✅ Nettoyage horaire terminé: ${duplicateCleanup.details.newsDeleted} doublons supprimés`
+      );
     } catch (error) {
       console.error('❌ Erreur nettoyage horaire:', error);
     }
@@ -263,7 +278,7 @@ export class AutomatedMaintenanceService {
         spaceRecovered: 0,
         errors: [],
         warnings: [],
-        success: true
+        success: true,
       };
 
       // Maintenance principale
@@ -271,18 +286,23 @@ export class AutomatedMaintenanceService {
 
       maintenanceStats.operationsCompleted = results.length;
       maintenanceStats.recordsProcessed = results.reduce((sum, r) => sum + r.recordsAffected, 0);
-      maintenanceStats.spaceRecovered = results.reduce((sum, r) => sum + (r.details.spaceRecovered || 0), 0);
+      maintenanceStats.spaceRecovered = results.reduce(
+        (sum, r) => sum + (r.details.spaceRecovered || 0),
+        0
+      );
       maintenanceStats.errors.push(...results.flatMap(r => r.errors));
       maintenanceStats.warnings.push(...results.flatMap(r => r.warnings));
 
       maintenanceStats.endTime = new Date();
-      maintenanceStats.duration = maintenanceStats.endTime.getTime() - maintenanceStats.startTime.getTime();
+      maintenanceStats.duration =
+        maintenanceStats.endTime.getTime() - maintenanceStats.startTime.getTime();
       maintenanceStats.success = maintenanceStats.errors.length === 0;
 
       await this.saveMaintenanceStats(maintenanceStats);
 
-      console.log(`✅ Validation quotidienne terminée: ${maintenanceStats.recordsProcessed} enregistrements, ${maintenanceStats.spaceRecovered}MB récupérés`);
-
+      console.log(
+        `✅ Validation quotidienne terminée: ${maintenanceStats.recordsProcessed} enregistrements, ${maintenanceStats.spaceRecovered}MB récupérés`
+      );
     } catch (error) {
       console.error('❌ Erreur validation quotidienne:', error);
     }
@@ -299,7 +319,7 @@ export class AutomatedMaintenanceService {
       const optimizationResult = await this.maintenanceService.optimizeDatabase();
 
       // VACUUM ANALYZE
-      const pool = new (require('pg')).Pool({
+      const pool = new (require('pg').Pool)({
         host: process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.DB_PORT || '5432'),
         database: process.env.DB_NAME || 'financial_analyst',
@@ -316,8 +336,9 @@ export class AutomatedMaintenanceService {
         await pool.end();
       }
 
-      console.log(`✅ Optimisation hebdomadaire terminée: ${optimizationResult.recordsAffected} tables optimisées`);
-
+      console.log(
+        `✅ Optimisation hebdomadaire terminée: ${optimizationResult.recordsAffected} tables optimisées`
+      );
     } catch (error) {
       console.error('❌ Erreur optimisation hebdomadaire:', error);
     }
@@ -335,11 +356,12 @@ export class AutomatedMaintenanceService {
       // Compression des archives si nécessaire
       const compressionResult = await this.compressArchives();
 
-      console.log(`✅ Archivage mensuel terminé: ${archiveResult.recordsAffected} enregistrements archivés`);
+      console.log(
+        `✅ Archivage mensuel terminé: ${archiveResult.recordsAffected} enregistrements archivés`
+      );
       if (compressionResult.spaceSaved > 0) {
         console.log(`💾 Compression: ${compressionResult.spaceSaved.toFixed(1)}MB économisés`);
       }
-
     } catch (error) {
       console.error('❌ Erreur archivage mensuel:', error);
     }
@@ -364,7 +386,9 @@ export class AutomatedMaintenanceService {
       console.log('='.repeat(80));
 
       console.log(`📊 Données disponibles: ${backtestReport.totalNews.toLocaleString()} items`);
-      console.log(`📅 Période: ${backtestReport.dateRange.start.toISOString().split('T')[0]} - ${backtestReport.dateRange.end.toISOString().split('T')[0]}`);
+      console.log(
+        `📅 Période: ${backtestReport.dateRange.start.toISOString().split('T')[0]} - ${backtestReport.dateRange.end.toISOString().split('T')[0]}`
+      );
 
       console.log('\n💭 Distribution par sentiment:');
       Object.entries(backtestReport.sentimentDistribution).forEach(([sentiment, count]) => {
@@ -374,7 +398,7 @@ export class AutomatedMaintenanceService {
 
       console.log('\n📰 Distribution par source (Top 10):');
       const sortedSources = Object.entries(backtestReport.sourceDistribution)
-        .sort(([,a], [,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 10);
 
       sortedSources.forEach(([source, count]) => {
@@ -383,20 +407,27 @@ export class AutomatedMaintenanceService {
       });
 
       console.log('\n⭐ Distribution par qualité:');
-      console.log(`   • Haute qualité: ${backtestReport.qualityScoreDistribution.high.toLocaleString()}`);
-      console.log(`   • Qualité moyenne: ${backtestReport.qualityScoreDistribution.medium.toLocaleString()}`);
-      console.log(`   • Faible qualité: ${backtestReport.qualityScoreDistribution.low.toLocaleString()}`);
+      console.log(
+        `   • Haute qualité: ${backtestReport.qualityScoreDistribution.high.toLocaleString()}`
+      );
+      console.log(
+        `   • Qualité moyenne: ${backtestReport.qualityScoreDistribution.medium.toLocaleString()}`
+      );
+      console.log(
+        `   • Faible qualité: ${backtestReport.qualityScoreDistribution.low.toLocaleString()}`
+      );
 
       console.log('\n🏛️ Événements de marché importants:');
       backtestReport.marketEvents.forEach(event => {
-        console.log(`   • ${event.date.toISOString().split('T')[0]}: ${event.description} [${event.importance.toUpperCase()}]`);
+        console.log(
+          `   • ${event.date.toISOString().split('T')[0]}: ${event.description} [${event.importance.toUpperCase()}]`
+        );
       });
 
       console.log('\n' + '='.repeat(80));
 
       // Sauvegarder le rapport
       await this.saveQuarterlyReport(backtestReport);
-
     } catch (error) {
       console.error('❌ Erreur rapport trimestriel:', error);
     }
@@ -408,16 +439,20 @@ export class AutomatedMaintenanceService {
   private registerCronJobs(): void {
     this.schedules.forEach(schedule => {
       if (schedule.enabled) {
-        const task = cron.schedule(schedule.cron, async () => {
-          try {
-            await this.runScheduledTask(schedule.name);
-          } catch (error) {
-            console.error(`❌ Erreur tâche ${schedule.name}:`, error);
+        const task = cron.schedule(
+          schedule.cron,
+          async () => {
+            try {
+              await this.runScheduledTask(schedule.name);
+            } catch (error) {
+              console.error(`❌ Erreur tâche ${schedule.name}:`, error);
+            }
+          },
+          {
+            scheduled: true,
+            timezone: 'America/New_York',
           }
-        }, {
-          scheduled: true,
-          timezone: 'America/New_York'
-        });
+        );
 
         console.log(`📅 Tâche enregistrée: ${schedule.name} - ${schedule.cron}`);
       }
@@ -462,7 +497,6 @@ export class AutomatedMaintenanceService {
 
       const duration = Date.now() - startTime.getTime();
       console.log(`✅ Tâche ${taskName} terminée en ${(duration / 1000).toFixed(1)}s`);
-
     } catch (error) {
       console.error(`❌ Erreur tâche ${taskName}:`, error);
     } finally {
@@ -479,7 +513,10 @@ export class AutomatedMaintenanceService {
 
     // Si dernière exécution > 24h, lancer validation complète
     const lastValidation = this.stats.filter(s => s.schedule === 'daily').pop();
-    if (!lastValidation || now.getTime() - new Date(lastValidation.startTime).getTime() > 24 * 60 * 60 * 1000) {
+    if (
+      !lastValidation ||
+      now.getTime() - new Date(lastValidation.startTime).getTime() > 24 * 60 * 60 * 1000
+    ) {
       console.log('🔄 Lancement validation complète (dernière > 24h)...');
       this.performDailyValidation().catch(console.error);
     }
@@ -490,14 +527,20 @@ export class AutomatedMaintenanceService {
    */
   private startMonitoring(): void {
     // Monitoring toutes les 5 minutes
-    setInterval(() => {
-      this.performHealthCheck();
-    }, 5 * 60 * 1000);
+    setInterval(
+      () => {
+        this.performHealthCheck();
+      },
+      5 * 60 * 1000
+    );
 
     // Nettoyage des vieux logs toutes les heures
-    setInterval(() => {
-      this.cleanupOldStats();
-    }, 60 * 60 * 1000);
+    setInterval(
+      () => {
+        this.cleanupOldStats();
+      },
+      60 * 60 * 1000
+    );
   }
 
   /**
@@ -505,15 +548,21 @@ export class AutomatedMaintenanceService {
    */
   private performHealthCheck(): void {
     if (this.isRunning) {
-      console.log(`💓 Maintenance en cours: ${this.currentTask} (${Math.floor((Date.now() - this.stats[this.stats.length - 1]?.startTime?.getTime() || 0) / 1000)}s)`);
+      console.log(
+        `💓 Maintenance en cours: ${this.currentTask} (${Math.floor((Date.now() - this.stats[this.stats.length - 1]?.startTime?.getTime() || 0) / 1000)}s)`
+      );
     }
 
     // Vérifier l'espace disque (simple)
     const recentStats = this.stats.slice(-10);
-    const avgSpaceRecovered = recentStats.reduce((sum, s) => sum + (s.spaceRecovered || 0), 0) / recentStats.length;
+    const avgSpaceRecovered =
+      recentStats.reduce((sum, s) => sum + (s.spaceRecovered || 0), 0) / recentStats.length;
 
-    if (avgSpaceRecovered > 100) { // Si on récupère > 100MB en moyenne
-      console.log(`⚠️ Volume élevé de nettoyage: ${avgSpaceRecovered.toFixed(1)}MB moy. - Vérifier la qualité des données entrantes`);
+    if (avgSpaceRecovered > 100) {
+      // Si on récupère > 100MB en moyenne
+      console.log(
+        `⚠️ Volume élevé de nettoyage: ${avgSpaceRecovered.toFixed(1)}MB moy. - Vérifier la qualité des données entrantes`
+      );
     }
 
     // Vérifier les erreurs
@@ -536,7 +585,9 @@ export class AutomatedMaintenanceService {
    */
   private displayConfiguration(): void {
     console.log('⚙️ Configuration du service de maintenance:');
-    console.log(`   • Base de données: ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${process.env.DB_NAME || 'financial_analyst'}`);
+    console.log(
+      `   • Base de données: ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${process.env.DB_NAME || 'financial_analyst'}`
+    );
     console.log(`   • Fuseau horaire: America/New_York`);
     console.log(`   • Monitoring: Activé (toutes les 5 minutes)`);
     console.log(`   • Nettoyage logs: Activé (toutes les heures)`);
@@ -552,9 +603,10 @@ export class AutomatedMaintenanceService {
       console.log('\n📊 RAPPORT DE QUALITÉ DES DONNÉES:');
       console.log(`   • Total news: ${dbStats.news?.total_news || 0}`);
       console.log(`   • News aujourd'hui: ${dbStats.news?.today_news || 0}`);
-      console.log(`   • Sources actives: ${(dbStats.sources || []).filter((s: any) => s.is_active).length}`);
+      console.log(
+        `   • Sources actives: ${(dbStats.sources || []).filter((s: any) => s.is_active).length}`
+      );
       console.log(`   • Taux de succès global: ${this.calculateSuccessRate()}%`);
-
     } catch (error) {
       console.error('Erreur rapport qualité:', error);
     }
@@ -577,7 +629,9 @@ export class AutomatedMaintenanceService {
    */
   private async saveMaintenanceStats(stats: MaintenanceStats): Promise<void> {
     // Implémentation simple - dans un vrai projet, sauvegarder en base
-    console.log(`💾 Statistiques sauvegardées: ${stats.schedule} - ${stats.success ? 'SUCCÈS' : 'ÉCHEC'}`);
+    console.log(
+      `💾 Statistiques sauvegardées: ${stats.schedule} - ${stats.success ? 'SUCCÈS' : 'ÉCHEC'}`
+    );
   }
 
   /**
@@ -609,7 +663,7 @@ export class AutomatedMaintenanceService {
     return {
       totalProcessed: Math.floor(Math.random() * 1000) + 100,
       errors: [],
-      warnings: []
+      warnings: [],
     };
   }
 
@@ -668,7 +722,8 @@ Exemples:
   // Exécuter la commande appropriée
   if (args.includes('--run') || args.includes('-r')) {
     console.log('🔧 Exécution de la maintenance complète...');
-    maintenance.runFullMaintenance()
+    maintenance
+      .runFullMaintenance()
       .then(() => {
         console.log('✅ Maintenance terminée avec succès');
         process.exit(0);
@@ -684,9 +739,8 @@ Exemples:
     // Garder le processus actif
     process.stdin.resume();
   } else {
-    console.log('⚠️ Aucune commande spécifiée. Utiliser --help pour l\'aide.');
+    console.log("⚠️ Aucune commande spécifiée. Utiliser --help pour l'aide.");
     process.exit(1);
   }
 }
 
-export { AutomatedMaintenanceService };

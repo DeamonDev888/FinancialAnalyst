@@ -39,13 +39,14 @@ async function main() {
         await showTodaySummary(processor);
         break;
 
-      case 'export':
+      case 'export': {
         const startDate = args[1] || getLastWeekDate();
         const endDate = args[2] || getTodayDate();
         await exportToCSV(dataManager, startDate, endDate, args[3]);
         break;
+      }
 
-      case 'custom':
+      case 'custom': {
         const customStart = args[1];
         const customEnd = args[2];
         if (!customStart || !customEnd) {
@@ -56,6 +57,7 @@ async function main() {
         }
         await analyzeCustomPeriod(dataManager, customStart, customEnd);
         break;
+      }
 
       default:
         showUsage();

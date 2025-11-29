@@ -46,92 +46,118 @@ export class NewsValidationService {
       name: 'title_length',
       critical: true,
       penalty: 0.4,
-      description: 'Le titre doit avoir entre 10 et 500 caractères'
+      description: 'Le titre doit avoir entre 10 et 500 caractères',
     },
     {
       name: 'title_quality',
       critical: false,
       penalty: 0.3,
-      description: 'Le titre ne doit pas contenir trop de majuscules ou caractères spéciaux'
+      description: 'Le titre ne doit pas contenir trop de majuscules ou caractères spéciaux',
     },
     {
       name: 'url_format',
       critical: true,
       penalty: 0.5,
-      description: 'L\'URL doit être valide et accessible'
+      description: "L'URL doit être valide et accessible",
     },
     {
       name: 'url_shortener',
       critical: false,
       penalty: 0.1,
-      description: 'Les URL raccourcies sont moins fiables'
+      description: 'Les URL raccourcies sont moins fiables',
     },
     {
       name: 'source_reliability',
       critical: false,
       penalty: 0.2,
-      description: 'Vérification de la fiabilité de la source'
+      description: 'Vérification de la fiabilité de la source',
     },
     {
       name: 'content_quality',
       critical: false,
       penalty: 0.2,
-      description: 'Qualité du contenu si disponible'
+      description: 'Qualité du contenu si disponible',
     },
     {
       name: 'date_validity',
       critical: true,
       penalty: 0.5,
-      description: 'La date de publication doit être dans une plage raisonnable'
+      description: 'La date de publication doit être dans une plage raisonnable',
     },
     {
       name: 'duplicate_detection',
       critical: false,
       penalty: 0.3,
-      description: 'Détection des doublons basée sur le hash'
+      description: 'Détection des doublons basée sur le hash',
     },
     {
       name: 'spam_detection',
       critical: true,
       penalty: 0.8,
-      description: 'Détection de spam et contenu suspect'
+      description: 'Détection de spam et contenu suspect',
     },
     {
       name: 'financial_relevance',
       critical: false,
       penalty: 0.15,
-      description: 'Pertinence financière du contenu'
-    }
+      description: 'Pertinence financière du contenu',
+    },
   ];
 
   // Sources fiables avec scores de confiance
   private sourceReliability: Record<string, number> = {
-    'ZeroHedge': 0.85,
-    'CNBC': 0.90,
-    'FinancialJuice': 0.80,
-    'Finnhub': 0.95,
-    'FRED': 1.0,
-    'TradingEconomics': 0.85,
-    'Bloomberg': 0.95,
-    'Reuters': 0.90,
-    'MarketWatch': 0.80,
+    ZeroHedge: 0.85,
+    CNBC: 0.9,
+    FinancialJuice: 0.8,
+    Finnhub: 0.95,
+    FRED: 1.0,
+    TradingEconomics: 0.85,
+    Bloomberg: 0.95,
+    Reuters: 0.9,
+    MarketWatch: 0.8,
     'Yahoo Finance': 0.85,
     'Investing.com': 0.75,
-    'CBOE': 1.0,
-    'Twitter': 0.40,
-    'Reddit': 0.30,
+    CBOE: 1.0,
+    Twitter: 0.4,
+    Reddit: 0.3,
     'Social Media': 0.25,
   };
 
   // Mots-clés financiers pour la pertinence
   private financialKeywords = [
-    'fed', 'federal reserve', 'inflation', 'cpi', 'interest rate',
-    'market', 'stock', 'bond', 'commodity', 'currency',
-    'trading', 'investing', 'portfolio', 'dividend',
-    'earnings', 'revenue', 'profit', 'loss', 'gdp',
-    'volatility', 'vix', 'sp500', 'nasdaq', 'dow jones',
-    'bullish', 'bearish', 'rally', 'crash', 'correction',
-    'economy', 'recession', 'recovery', 'unemployment'
+    'fed',
+    'federal reserve',
+    'inflation',
+    'cpi',
+    'interest rate',
+    'market',
+    'stock',
+    'bond',
+    'commodity',
+    'currency',
+    'trading',
+    'investing',
+    'portfolio',
+    'dividend',
+    'earnings',
+    'revenue',
+    'profit',
+    'loss',
+    'gdp',
+    'volatility',
+    'vix',
+    'sp500',
+    'nasdaq',
+    'dow jones',
+    'bullish',
+    'bearish',
+    'rally',
+    'crash',
+    'correction',
+    'economy',
+    'recession',
+    'recovery',
+    'unemployment',
   ];
 
   constructor() {
@@ -156,7 +182,7 @@ export class NewsValidationService {
       qualityScore: 1.0,
       errors: [],
       warnings: [],
-      appliedRules: []
+      appliedRules: [],
     };
 
     const processedItem: ProcessedNewsItem = {
@@ -172,7 +198,7 @@ export class NewsValidationService {
       normalized_url: this.normalizeUrl(item.url),
       scraped_at: new Date(),
       created_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
     };
 
     // Appliquer chaque règle de validation
@@ -195,7 +221,6 @@ export class NewsValidationService {
         if (ruleResult.enhancedData) {
           Object.assign(processedItem, ruleResult.enhancedData);
         }
-
       } catch (error) {
         console.warn(`Erreur validation règle ${rule.name}:`, error);
         result.warnings.push(`Erreur validation ${rule.name}`);
@@ -234,7 +259,7 @@ export class NewsValidationService {
           qualityScore: 0,
           errors: ['Doublon détecté dans le batch'],
           warnings: [],
-          appliedRules: ['duplicate_detection']
+          appliedRules: ['duplicate_detection'],
         };
 
         results.push(duplicateResult);
@@ -250,7 +275,9 @@ export class NewsValidationService {
     const validCount = results.filter(r => r.isValid).length;
     const duplicateCount = results.filter(r => r.errors.some(e => e.includes('Doublon'))).length;
 
-    console.log(`✅ Validation terminée: ${validCount}/${items.length} valides, ${duplicateCount} doublons`);
+    console.log(
+      `✅ Validation terminée: ${validCount}/${items.length} valides, ${duplicateCount} doublons`
+    );
 
     return results;
   }
@@ -456,14 +483,20 @@ export class NewsValidationService {
 
     // Mots spam typiques
     const spamWords = [
-      'click here', 'buy now', 'limited time', 'act fast',
-      'guaranteed', 'miracle', 'secret', 'shocking',
-      'you won', 'congratulations', 'winner'
+      'click here',
+      'buy now',
+      'limited time',
+      'act fast',
+      'guaranteed',
+      'miracle',
+      'secret',
+      'shocking',
+      'you won',
+      'congratulations',
+      'winner',
     ];
 
-    const hasSpamWords = spamWords.some(word =>
-      title.includes(word) || content.includes(word)
-    );
+    const hasSpamWords = spamWords.some(word => title.includes(word) || content.includes(word));
 
     if (hasSpamWords) {
       return { passed: false };
@@ -491,9 +524,7 @@ export class NewsValidationService {
     const text = `${item.title} ${item.content || ''}`.toLowerCase();
 
     // Compter les mots-clés financiers
-    const keywordCount = this.financialKeywords.filter(keyword =>
-      text.includes(keyword)
-    ).length;
+    const keywordCount = this.financialKeywords.filter(keyword => text.includes(keyword)).length;
 
     // Au moins 1 mot-clé financier pour être pertinent
     return { passed: keywordCount > 0 };
@@ -565,7 +596,9 @@ export class NewsValidationService {
   /**
    * Détermine les heures de marché
    */
-  private determineMarketHours(timestamp: Date): 'pre-market' | 'market' | 'after-hours' | 'extended' {
+  private determineMarketHours(
+    timestamp: Date
+  ): 'pre-market' | 'market' | 'after-hours' | 'extended' {
     const estTime = new Date(timestamp.toLocaleString('en-US', { timeZone: 'America/New_York' }));
     const hours = estTime.getHours();
     const day = estTime.getDay();
@@ -600,7 +633,7 @@ export class NewsValidationService {
       saved: 0,
       duplicates: 0,
       rejected: 0,
-      errors: [] as string[]
+      errors: [] as string[],
     };
 
     const client = await this.pool.connect();
@@ -617,7 +650,8 @@ export class NewsValidationService {
           if (result.isValid) {
             const item = result.processedItem;
 
-            await client.query(`
+            await client.query(
+              `
               INSERT INTO news_items (
                 title, title_hash, url, url_hash, source, content, author,
                 published_at, scraped_at, sentiment, confidence, keywords,
@@ -628,26 +662,28 @@ export class NewsValidationService {
               DO UPDATE SET
                 duplicate_count = news_items.duplicate_count + 1,
                 updated_at = NOW()
-            `, [
-              item.title,
-              item.title_hash,
-              item.url,
-              item.url_hash,
-              item.source,
-              item.content,
-              item.author,
-              item.timestamp,
-              item.scraped_at,
-              item.sentiment || 'neutral',
-              item.confidence || 0.5,
-              JSON.stringify(item.keywords),
-              item.market_hours,
-              item.processing_status,
-              item.duplicate_count,
-              item.data_quality_score,
-              item.created_at,
-              item.updated_at
-            ]);
+            `,
+              [
+                item.title,
+                item.title_hash,
+                item.url,
+                item.url_hash,
+                item.source,
+                item.content,
+                item.author,
+                item.timestamp,
+                item.scraped_at,
+                item.sentiment || 'neutral',
+                item.confidence || 0.5,
+                JSON.stringify(item.keywords),
+                item.market_hours,
+                item.processing_status,
+                item.duplicate_count,
+                item.data_quality_score,
+                item.created_at,
+                item.updated_at,
+              ]
+            );
 
             stats.saved++;
           } else if (result.errors.some(e => e.includes('Doublon'))) {
@@ -665,7 +701,6 @@ export class NewsValidationService {
 
       // Mettre à jour les métriques de qualité
       await this.updateQualityMetrics();
-
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -673,7 +708,9 @@ export class NewsValidationService {
       client.release();
     }
 
-    console.log(`💾 Sauvegarde terminée: ${stats.saved} insérées, ${stats.duplicates} doublons, ${stats.rejected} rejetées`);
+    console.log(
+      `💾 Sauvegarde terminée: ${stats.saved} insérées, ${stats.duplicates} doublons, ${stats.rejected} rejetées`
+    );
 
     if (stats.errors.length > 0) {
       console.warn(`⚠️ Erreurs: ${stats.errors.length}`);

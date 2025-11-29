@@ -192,14 +192,14 @@ ${eventsList}
 ${frenchRec}
 
 💹 *ES Futures Analysis | ${(() => {
-      try {
-        return data.created_at && new Date(data.created_at).getTime() > 0
-          ? new Date(data.created_at).toLocaleDateString('fr-FR')
-          : new Date().toLocaleDateString('fr-FR');
-      } catch {
-        return new Date().toLocaleDateString('fr-FR');
-      }
-    })()}*
+    try {
+      return data.created_at && new Date(data.created_at).getTime() > 0
+        ? new Date(data.created_at).toLocaleDateString('fr-FR')
+        : new Date().toLocaleDateString('fr-FR');
+    } catch {
+      return new Date().toLocaleDateString('fr-FR');
+    }
+  })()}*
   `.trim();
 
   return [message];

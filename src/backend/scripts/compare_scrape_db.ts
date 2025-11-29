@@ -1,7 +1,6 @@
 import { Pool } from 'pg';
 import { TradingEconomicsScraper } from '../ingestion/TradingEconomicsScraper';
 import { NewsAggregator } from '../ingestion/NewsAggregator';
-import { VixPlaywrightScraper } from '../ingestion/VixPlaywrightScraper';
 
 const pool = new Pool({
   host: 'localhost',

@@ -1,6 +1,67 @@
 import { Pool } from 'pg';
-import { NewsDatabaseService } from '../backend/database/NewsDatabaseService';
 import * as dotenv from 'dotenv';
+
+// Simple service pour tester la validation sans dépendances complexes
+class SimpleNewsDatabaseService {
+  private pool: Pool;
+
+  constructor() {
+    this.pool = new Pool({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'financial_analyst',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || '9022',
+    });
+  }
+
+  async testConnection(): Promise<boolean> {
+    try {
+      const client = await this.pool.connect();
+      await client.query('SELECT NOW()');
+      client.release();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async getDatabaseStats(): Promise<any> {
+    const client = await this.pool.connect();
+    try {
+      const [newsStats, sources] = await Promise.all([
+        client.query(`
+          SELECT
+            COUNT(*) as total_news,
+            COUNT(CASE WHEN published_at >= CURRENT_DATE THEN 1 END) as today_news,
+            COUNT(CASE WHEN published_at >= NOW() - INTERVAL '24 hours' THEN 1 END) as recent_24h,
+            COUNT(CASE WHEN published_at >= NOW() - INTERVAL '7 days' THEN 1 END) as recent_7d,
+            COUNT(CASE WHEN sentiment = 'bullish' THEN 1 END) as bullish,
+            COUNT(CASE WHEN sentiment = 'bearish' THEN 1 END) as bearish,
+            COUNT(CASE WHEN sentiment = 'neutral' THEN 1 END) as neutral,
+            MAX(published_at) as latest_news
+          FROM news_items
+        `),
+        client.query(`
+          SELECT COUNT(DISTINCT source) as active_sources
+          FROM news_items
+          WHERE published_at >= NOW() - INTERVAL '7 days'
+        `),
+      ]);
+
+      return {
+        news: newsStats.rows[0],
+        sources: sources.rows[0],
+      };
+    } finally {
+      client.release();
+    }
+  }
+
+  async close(): Promise<void> {
+    await this.pool.end();
+  }
+}
 
 dotenv.config();
 
@@ -22,10 +83,10 @@ interface ValidationReport {
 }
 
 export class DataQualityValidator {
-  private dbService: NewsDatabaseService;
+  private dbService: SimpleNewsDatabaseService;
 
   constructor() {
-    this.dbService = new NewsDatabaseService();
+    this.dbService = new SimpleNewsDatabaseService();
   }
 
   async runFullValidation(): Promise<ValidationReport> {
@@ -54,7 +115,7 @@ export class DataQualityValidator {
         sentimentDistribution: {},
         qualityScore: 0,
         issues: [],
-        recommendations: []
+        recommendations: [],
       };
 
       const client = await pool.connect();
@@ -132,13 +193,11 @@ export class DataQualityValidator {
 
         // 7. Génération des recommandations
         this.generateRecommendations(report);
-
       } finally {
         client.release();
       }
 
       return report;
-
     } catch (error) {
       console.error('❌ Erreur lors de la validation:', error);
       throw error;
@@ -152,13 +211,17 @@ export class DataQualityValidator {
     if (report.duplicates > 0) {
       const dupRate = (report.duplicates / report.totalNews) * 100;
       if (dupRate > 10) {
-        report.issues.push(`Taux de duplication élevé: ${dupRate.toFixed(1)}% (${report.duplicates} doublons)`);
+        report.issues.push(
+          `Taux de duplication élevé: ${dupRate.toFixed(1)}% (${report.duplicates} doublons)`
+        );
       }
     }
 
     // Données récentes insuffisantes
     if (report.recentNews24h < 50) {
-      report.issues.push(`Peu de données récentes: seulement ${report.recentNews24h} news dans les dernières 24h`);
+      report.issues.push(
+        `Peu de données récentes: seulement ${report.recentNews24h} news dans les dernières 24h`
+      );
     }
 
     // Titres vides
@@ -173,7 +236,9 @@ export class DataQualityValidator {
 
     // Sentiments invalides
     if (report.invalidSentiments > 0) {
-      report.issues.push(`${report.invalidSentiments} news avec des valeurs de sentiment invalides`);
+      report.issues.push(
+        `${report.invalidSentiments} news avec des valeurs de sentiment invalides`
+      );
     }
 
     // Dates futures
@@ -189,7 +254,9 @@ export class DataQualityValidator {
     // Distribution par source déséquilibrée
     const sources = Object.keys(report.sourceDistribution);
     if (sources.length < 3) {
-      report.issues.push(`Peu de sources de données: seulement ${sources.length} sources différentes`);
+      report.issues.push(
+        `Peu de sources de données: seulement ${sources.length} sources différentes`
+      );
     }
 
     const maxSourceCount = Math.max(...Object.values(report.sourceDistribution));
@@ -226,7 +293,9 @@ export class DataQualityValidator {
 
     // Recommandations basées sur les problèmes détectés
     if (report.duplicates > 0) {
-      recommendations.push('💡 Implémenter une déduplication plus robuste basée sur le hash du contenu');
+      recommendations.push(
+        '💡 Implémenter une déduplication plus robuste basée sur le hash du contenu'
+      );
       recommendations.push('💡 Ajouter des contraintes UNIQUE au niveau de la base de données');
     }
 
@@ -302,7 +371,7 @@ export class DataQualityValidator {
     // Distribution par source
     lines.push('📰 DISTRIBUTION PAR SOURCE:');
     const sortedSources = Object.entries(report.sourceDistribution)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 10);
 
     sortedSources.forEach(([source, count]) => {
@@ -400,7 +469,6 @@ export class DataQualityValidator {
       `);
 
       console.log(`✅ Corrections terminées. ${result.rowCount} anciennes news supprimées.`);
-
     } finally {
       client.release();
       await pool.end();
@@ -412,7 +480,8 @@ export class DataQualityValidator {
 if (require.main === module) {
   const validator = new DataQualityValidator();
 
-  validator.generateDetailedReport()
+  validator
+    .generateDetailedReport()
     .then(report => {
       console.log(report);
 
@@ -420,25 +489,29 @@ if (require.main === module) {
       const readline = require('readline');
       const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
       });
 
-      rl.question('\nVoulez-vous corriger automatiquement les problèmes détectés? (y/N): ', (answer) => {
-        if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
-          validator.fixCommonIssues()
-            .then(() => {
-              console.log('✅ Corrections appliquées avec succès!');
-              process.exit(0);
-            })
-            .catch(error => {
-              console.error('❌ Erreur lors des corrections:', error);
-              process.exit(1);
-            });
-        } else {
-          console.log('👋 Terminé. Aucune correction appliquée.');
-          process.exit(0);
+      rl.question(
+        '\nVoulez-vous corriger automatiquement les problèmes détectés? (y/N): ',
+        answer => {
+          if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
+            validator
+              .fixCommonIssues()
+              .then(() => {
+                console.log('✅ Corrections appliquées avec succès!');
+                process.exit(0);
+              })
+              .catch(error => {
+                console.error('❌ Erreur lors des corrections:', error);
+                process.exit(1);
+              });
+          } else {
+            console.log('👋 Terminé. Aucune correction appliquée.');
+            process.exit(0);
+          }
         }
-      });
+      );
     })
     .catch(error => {
       console.error('❌ Erreur lors de la validation:', error);
