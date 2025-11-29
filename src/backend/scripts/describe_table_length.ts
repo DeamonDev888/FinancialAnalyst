@@ -1,4 +1,3 @@
-
 import { Pool } from 'pg';
 
 const pool = new Pool({
@@ -17,7 +16,9 @@ async function describeTableLength() {
       FROM information_schema.columns 
       WHERE table_name = 'market_data';
     `);
-    res.rows.forEach(r => console.log(`${r.column_name}: ${r.data_type} (${r.character_maximum_length})`));
+    res.rows.forEach(r =>
+      console.log(`${r.column_name}: ${r.data_type} (${r.character_maximum_length})`)
+    );
   } catch (e) {
     console.error(e);
   } finally {

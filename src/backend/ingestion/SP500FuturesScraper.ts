@@ -121,7 +121,10 @@ export class SP500FuturesScraper {
       // Extraire le prix actuel
       const price = await this.extractText(page, '[data-test="instrument-price-last"]');
       const changeAbs = await this.extractText(page, '[data-test="instrument-price-change"]');
-      const changePct = await this.extractText(page, '[data-test="instrument-price-change-percent"]');
+      const changePct = await this.extractText(
+        page,
+        '[data-test="instrument-price-change-percent"]'
+      );
       const prevClose = await this.extractText(page, '[data-test="prev-close-value"]');
       const open = await this.extractText(page, '[data-test="open-value"]');
       const dayRange = await this.extractText(page, '[data-test="days-range-value"]');
@@ -148,7 +151,9 @@ export class SP500FuturesScraper {
 
             if (data && data.LAST_PRICE) {
               const lastPrice = this.parseNumber(data.LAST_PRICE);
-          console.log(`[SP500Futures] ✅ Prix trouvé via meta: ${lastPrice?.toFixed(2)} (Investing.com - Futures Direct)`);
+              console.log(
+                `[SP500Futures] ✅ Prix trouvé via meta: ${lastPrice?.toFixed(2)} (Investing.com - Futures Direct)`
+              );
 
               const [low, high] = this.parseRange(data.DAY_RANGE || '');
 
@@ -174,7 +179,9 @@ export class SP500FuturesScraper {
 
       if (price) {
         const parsedPrice = this.parseNumber(price);
-        console.log(`[SP500Futures] ✅ Données futures extraites: ${parsedPrice?.toFixed(2)} (Investing.com - Scraping Direct)`);
+        console.log(
+          `[SP500Futures] ✅ Données futures extraites: ${parsedPrice?.toFixed(2)} (Investing.com - Scraping Direct)`
+        );
         return {
           current: this.parseNumber(price) || 0,
           change: this.parseNumber(changeAbs),
@@ -191,7 +198,10 @@ export class SP500FuturesScraper {
       console.log('[SP500Futures] ❌ Données futures non trouvées');
       return null;
     } catch (error) {
-      console.error('[SP500Futures] Erreur scraping:', error instanceof Error ? error.message : error);
+      console.error(
+        '[SP500Futures] Erreur scraping:',
+        error instanceof Error ? error.message : error
+      );
       return null;
     } finally {
       await page.close();
@@ -235,8 +245,16 @@ export class SP500FuturesScraper {
 
       console.log('[SP500Futures] Extraction Yahoo Finance...');
 
-      const price = await this.extractText(page, '[data-field="regularMarketPrice"] fin-streamer', 5000);
-      const changeAbs = await this.extractText(page, '[data-field="regularMarketChangePercent"] fin-streamer span', 3000);
+      const price = await this.extractText(
+        page,
+        '[data-field="regularMarketPrice"] fin-streamer',
+        5000
+      );
+      const changeAbs = await this.extractText(
+        page,
+        '[data-field="regularMarketChangePercent"] fin-streamer span',
+        3000
+      );
 
       if (price) {
         console.log(`[SP500Futures] ✅ Yahoo Finance: ${price}`);
@@ -255,7 +273,10 @@ export class SP500FuturesScraper {
 
       return null;
     } catch (error) {
-      console.error('[SP500Futures] Erreur Yahoo Finance:', error instanceof Error ? error.message : error);
+      console.error(
+        '[SP500Futures] Erreur Yahoo Finance:',
+        error instanceof Error ? error.message : error
+      );
       return null;
     } finally {
       await page.close();
@@ -291,7 +312,7 @@ export class SP500FuturesScraper {
         resistance_levels: [] as number[],
         key_messages: [] as string[],
         sentiment: 'neutral',
-        technical_levels: [] as string[]
+        technical_levels: [] as string[],
       };
 
       // Chercher les articles récents avec des niveaux S&P 500/ES
@@ -299,7 +320,8 @@ export class SP500FuturesScraper {
 
       const articles = await page.locator('article, .post-item, .entry-item').all();
 
-      for (const article of articles.slice(0, 15)) { // Limiter aux 15 premiers articles
+      for (const article of articles.slice(0, 15)) {
+        // Limiter aux 15 premiers articles
         try {
           const titleElement = await article.locator('h1, h2, .title, a').first();
           const title = await titleElement.textContent();
@@ -319,15 +341,20 @@ export class SP500FuturesScraper {
             // Essayer de visiter l'article pour plus de détails
             try {
               const articlePage = await this.createStealthPage();
-              await articlePage.goto(link.startsWith('http') ? link : `https://www.zerohedge.com${link}`, {
-                waitUntil: 'domcontentloaded',
-                timeout: 10000,
-              });
+              await articlePage.goto(
+                link.startsWith('http') ? link : `https://www.zerohedge.com${link}`,
+                {
+                  waitUntil: 'domcontentloaded',
+                  timeout: 10000,
+                }
+              );
 
               await articlePage.waitForTimeout(1500);
 
               // Extraire le contenu de l'article
-              const content = await articlePage.locator('.entry-content, .post-content, article p').allTextContents();
+              const content = await articlePage
+                .locator('.entry-content, .post-content, article p')
+                .allTextContents();
               const fullContent = content.join(' ');
 
               // Extraire les niveaux du contenu
@@ -341,7 +368,7 @@ export class SP500FuturesScraper {
               await articlePage.close();
             } catch (e) {
               // Continuer même si l'article ne se charge pas
-              console.log('[SP500Futures] Impossible de charger l\'article détaillé');
+              console.log("[SP500Futures] Impossible de charger l'article détaillé");
             }
 
             break; // Limiter à 1-2 articles pour éviter le sur-scraping
@@ -359,12 +386,18 @@ export class SP500FuturesScraper {
 
       // Garder seulement les niveaux pertinents (autour du prix actuel)
       result.support_levels = result.support_levels.filter(level => level >= 5000 && level <= 8000);
-      result.resistance_levels = result.resistance_levels.filter(level => level >= 5000 && level <= 8000);
+      result.resistance_levels = result.resistance_levels.filter(
+        level => level >= 5000 && level <= 8000
+      );
 
       if (result.support_levels.length > 0 || result.resistance_levels.length > 0) {
         console.log(`[SP500Futures] ✅ Niveaux ZeroHedge extraits:`);
-        console.log(`   Supports: [${result.support_levels.slice(0, 5).join(', ')}${result.support_levels.length > 5 ? '...' : ''}]`);
-        console.log(`   Résistances: [${result.resistance_levels.slice(0, 5).join(', ')}${result.resistance_levels.length > 5 ? '...' : ''}]`);
+        console.log(
+          `   Supports: [${result.support_levels.slice(0, 5).join(', ')}${result.support_levels.length > 5 ? '...' : ''}]`
+        );
+        console.log(
+          `   Résistances: [${result.resistance_levels.slice(0, 5).join(', ')}${result.resistance_levels.length > 5 ? '...' : ''}]`
+        );
         console.log(`   Sentiment: ${result.sentiment}`);
         return result;
       }
@@ -372,7 +405,10 @@ export class SP500FuturesScraper {
       console.log('[SP500Futures] ℹ️ Aucun niveau technique trouvé sur ZeroHedge');
       return null;
     } catch (error) {
-      console.error('[SP500Futures] Erreur scraping ZeroHedge:', error instanceof Error ? error.message : error);
+      console.error(
+        '[SP500Futures] Erreur scraping ZeroHedge:',
+        error instanceof Error ? error.message : error
+      );
       return null;
     } finally {
       await page.close();
@@ -384,10 +420,39 @@ export class SP500FuturesScraper {
    */
   private containsTechnicalLevels(text: string): boolean {
     const keywords = [
-      'S&P 500', 'SPX', 'E-mini', 'ES', 'ES1', 'futures',
-      'support', 'resistance', 'level', 'target', 'pivot', 'breakout',
-      '5000', '5100', '5200', '5300', '5400', '5500', '5600', '5700', '5800', '5900', '6000',
-      '6100', '6200', '6300', '6400', '6500', '6600', '6700', '6800', '6900', '7000'
+      'S&P 500',
+      'SPX',
+      'E-mini',
+      'ES',
+      'ES1',
+      'futures',
+      'support',
+      'resistance',
+      'level',
+      'target',
+      'pivot',
+      'breakout',
+      '5000',
+      '5100',
+      '5200',
+      '5300',
+      '5400',
+      '5500',
+      '5600',
+      '5700',
+      '5800',
+      '5900',
+      '6000',
+      '6100',
+      '6200',
+      '6300',
+      '6400',
+      '6500',
+      '6600',
+      '6700',
+      '6800',
+      '6900',
+      '7000',
     ];
 
     const upperText = text.toUpperCase();
@@ -421,9 +486,15 @@ export class SP500FuturesScraper {
       const afterText = text.substring(text.indexOf(level.toString()) + 4).toUpperCase();
 
       // Déterminer si c'est un support ou résistance
-      if (resistanceKeywords.some(keyword => beforeText.includes(keyword) || afterText.includes(keyword))) {
+      if (
+        resistanceKeywords.some(
+          keyword => beforeText.includes(keyword) || afterText.includes(keyword)
+        )
+      ) {
         resistances.push(level);
-      } else if (supportKeywords.some(keyword => beforeText.includes(keyword) || afterText.includes(keyword))) {
+      } else if (
+        supportKeywords.some(keyword => beforeText.includes(keyword) || afterText.includes(keyword))
+      ) {
         supports.push(level);
       } else {
         // Par défaut, ajouter aux deux ou selon la position relative
@@ -439,8 +510,30 @@ export class SP500FuturesScraper {
    * Analyse le sentiment d'un texte
    */
   private analyzeSentiment(text: string): 'bullish' | 'bearish' | 'neutral' {
-    const bullishWords = ['buy', 'rally', 'bull', 'up', 'rise', 'gain', 'bullish', 'momentum', 'breakout', 'higher'];
-    const bearishWords = ['sell', 'crash', 'bear', 'down', 'fall', 'loss', 'bearish', 'correction', 'drop', 'lower'];
+    const bullishWords = [
+      'buy',
+      'rally',
+      'bull',
+      'up',
+      'rise',
+      'gain',
+      'bullish',
+      'momentum',
+      'breakout',
+      'higher',
+    ];
+    const bearishWords = [
+      'sell',
+      'crash',
+      'bear',
+      'down',
+      'fall',
+      'loss',
+      'bearish',
+      'correction',
+      'drop',
+      'lower',
+    ];
 
     const upperText = text.toUpperCase();
     const bullishCount = bullishWords.filter(word => upperText.includes(word.toUpperCase())).length;
@@ -462,7 +555,7 @@ export class SP500FuturesScraper {
     try {
       // Priorité 1: Investing.com (plus fiable pour les futures)
       console.log('[SP500Futures] 1️⃣ Récupération prix Investing.com...');
-      let futuresData = await this.scrapeInvestingFutures();
+      const futuresData = await this.scrapeInvestingFutures();
       if (futuresData && futuresData.current > 1000) {
         console.log(`[SP500Futures] ✅ Prix Investing.com: ${futuresData.current.toFixed(2)}`);
 
@@ -475,12 +568,12 @@ export class SP500FuturesScraper {
           futuresData.resistance_levels = zeroHedgeLevels.resistance_levels;
           futuresData.key_levels = [
             ...zeroHedgeLevels.technical_levels,
-            ...zeroHedgeLevels.key_messages
+            ...zeroHedgeLevels.key_messages,
           ];
           futuresData.zero_hedge_analysis = {
             technical_levels: zeroHedgeLevels.technical_levels,
             sentiment: zeroHedgeLevels.sentiment,
-            key_messages: zeroHedgeLevels.key_messages
+            key_messages: zeroHedgeLevels.key_messages,
           };
 
           console.log('[SP500Futures] ✅ Données complètes avec niveaux ZeroHedge');

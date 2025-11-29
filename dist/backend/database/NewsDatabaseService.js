@@ -432,7 +432,7 @@ class NewsDatabaseService {
                 client.release();
             }
         }
-        catch {
+        catch (_error) {
             console.log('⚠️ Failed to update source status - continuing without database');
         }
     }

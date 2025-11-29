@@ -40,7 +40,7 @@ export class VIXSetupAndGetter {
       // Lancer Sierra Chart
       const sierraProcess = exec(
         `"${this.sierraPath}/SierraChart_64.exe"`,
-        (error, stdout, stderr) => {
+        (error, _stdout, _stderr) => {
           if (error) {
             console.error('❌ Erreur lancement Sierra Chart:', error.message);
             resolve(false);

@@ -402,7 +402,7 @@ async function main() {
     console.log('🎉 Discovery lancé !\n');
   });
 
-  discovery.on('symbolDiscovered', (symbolInfo: SymbolInfo) => {
+  discovery.on('symbolDiscovered', (_symbolInfo: SymbolInfo) => {
     // Info déjà affichée dans handleMarketData
   });
 

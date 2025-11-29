@@ -41,12 +41,10 @@ const util_1 = require("util");
 const fs = __importStar(require("fs/promises"));
 const path = __importStar(require("path"));
 const dotenv = __importStar(require("dotenv"));
-const FinnhubClient_1 = require("../ingestion/FinnhubClient");
 dotenv.config();
 class RougePulseAgent extends BaseAgentSimple_1.BaseAgentSimple {
     execAsync;
     pool;
-    finnhubClient;
     constructor() {
         super('rouge-pulse-agent');
         this.execAsync = (0, util_1.promisify)(child_process_1.exec);
@@ -57,19 +55,18 @@ class RougePulseAgent extends BaseAgentSimple_1.BaseAgentSimple {
             user: process.env.DB_USER || 'postgres',
             password: process.env.DB_PASSWORD || '9022',
         });
-        this.finnhubClient = new FinnhubClient_1.FinnhubClient();
     }
     async analyzeEconomicEvents() {
         console.log(`[${this.agentName}] 🔍 Starting Enhanced Economic Calendar Analysis...`);
         try {
-            // 0. Récupérer les prix temps réel du S&P 500
-            console.log(`[${this.agentName}] 📈 Récupération des données S&P 500 en temps réel...`);
-            const sp500Data = await this.finnhubClient.fetchSP500Data();
+            // 0. Récupérer les prix temps réel du S&P 500 depuis la DB
+            console.log(`[${this.agentName}] 📈 Récupération des données S&P 500 depuis la base de données...`);
+            const sp500Data = await this.getLatestSP500FromDB();
             if (!sp500Data) {
-                console.warn(`[${this.agentName}] ⚠️ Impossible de récupérer les données S&P 500`);
+                console.warn(`[${this.agentName}] ⚠️ Impossible de récupérer les données S&P 500 depuis la DB`);
             }
             else {
-                console.log(`[${this.agentName}] ✅ S&P 500: ${sp500Data.current.toFixed(2)} (${sp500Data.percent_change > 0 ? '+' : ''}${sp500Data.percent_change.toFixed(2)}%)`);
+                console.log(`[${this.agentName}] ✅ S&P 500 (DB): ${sp500Data.current.toFixed(2)} (${sp500Data.percent_change > 0 ? '+' : ''}${sp500Data.percent_change.toFixed(2)}%)`);
             }
             // 1. Fetch Data from Database
             const events = await this.getUpcomingAndRecentEvents();
@@ -107,17 +104,113 @@ class RougePulseAgent extends BaseAgentSimple_1.BaseAgentSimple {
             };
         }
     }
+    /**
+     * Mapping détaillé des sources de données avec descriptions professionnelles
+     */
+    getDetailedSourceInfo(data) {
+        if (!data)
+            return null;
+        const symbol = data.symbol;
+        const current = data.current;
+        // Mapping des sources avec descriptions détaillées
+        const sourceMapping = {
+            ES_CONVERTED: () => {
+                const originalPrice = current && current > 1000 ? (current / 9.5).toFixed(2) : 'N/A';
+                return `🔄 SPY ETF Converti (${originalPrice} × 9.5) → ES Futures`;
+            },
+            ES_FROM_SPY: () => {
+                const originalPrice = current && current > 1000 ? (current / 9.5).toFixed(2) : 'N/A';
+                return `🔄 SPY ETF Backup (${originalPrice} × 9.5) → ES Futures`;
+            },
+            ES_FROM_QQQ: () => {
+                const originalPrice = current && current > 1000 ? (current / 12.0).toFixed(2) : 'N/A';
+                return `🔄 QQQ ETF Backup (${originalPrice} × 12.0) → ES Futures`;
+            },
+            'ES_Investing.com': () => {
+                return `📊 Investing.com (ES Futures) - Scraping Direct`;
+            },
+            ES_Yahoo_Finance: () => {
+                return `📈 Yahoo Finance (ES Futures) - Scraping Direct`;
+            },
+            ES_FUTURES_API: () => {
+                return `🔗 API Finnhub (ES Futures) - Données Brutes`;
+            },
+            ES: () => {
+                return `✅ ES Futures - Source Principale`;
+            },
+            SPY: () => {
+                return `💰 SPY ETF - Données Brutes`;
+            },
+            QQQ: () => {
+                return `🚀 QQQ ETF - Données Brutes`;
+            },
+            US500: () => {
+                return `🇺🇸 US500 Index - Données Brutes`;
+            },
+        };
+        // Chercher le motif dans le symbole
+        for (const [key, value] of Object.entries(sourceMapping)) {
+            if (symbol?.includes(key)) {
+                const description = value();
+                // Ajouter des détails supplémentaires si disponibles
+                const confidence = this.calculateConfidence(symbol, current);
+                const freshness = this.getFreshnessInfo(data.timestamp);
+                return `${description} | Confiance: ${confidence} | ${freshness}`;
+            }
+        }
+        // Source inconnue ou non mappée
+        return `❓ Source Non Identifiée (${symbol?.toUpperCase() || 'Inconnue'})`;
+    }
+    /**
+     * Calculer le niveau de confiance selon la source et le prix
+     */
+    calculateConfidence(symbol, current) {
+        if (!symbol || !current)
+            return 'Inconnue';
+        // Haute confiance pour les vrais ES Futures
+        if (symbol.includes('Investing.com') ||
+            symbol.includes('Yahoo_Finance') ||
+            symbol.includes('FUTURES_API')) {
+            return '🔥 Élevée (Futures Direct)';
+        }
+        // Moyenne confiance pour les conversions ETF
+        if (symbol.includes('CONVERTED') || symbol.includes('FROM_')) {
+            return '⚡ Moyenne (Conversion ETF)';
+        }
+        // Confiance standard pour les données brutes
+        if (symbol === 'ES' || symbol === 'SPY' || symbol === 'QQQ') {
+            return '📊 Standard (Données Brutes)';
+        }
+        return '🔍 Faible (Source Secondaire)';
+    }
+    /**
+     * Obtenir des informations sur la fraîcheur des données
+     */
+    getFreshnessInfo(timestamp) {
+        if (!timestamp)
+            return 'Timestamp Inconnu';
+        const now = Math.floor(Date.now() / 1000);
+        const ageMinutes = Math.floor((now - timestamp) / 60);
+        if (ageMinutes < 2) {
+            return `⚡ Temps Réel (${ageMinutes} min)`;
+        }
+        else if (ageMinutes < 15) {
+            return `📈 Très Récent (${ageMinutes} min)`;
+        }
+        else if (ageMinutes < 60) {
+            return `🕐 Récent (${Math.floor(ageMinutes / 60)}h ${ageMinutes % 60} min)`;
+        }
+        else {
+            return `📅 Ancien (${Math.floor(ageMinutes / 60)}h)`;
+        }
+    }
     async saveAnalysisToDatabase(analysis, technicalLevels, _sp500Data) {
         const client = await this.pool.connect();
         try {
             // Sauvegarder l'analyse principale
             const sp500Price = technicalLevels?.current_price || null; // Define sp500Price for the new INSERT statement
-            // Déterminer la source du prix
-            const priceSource = _sp500Data
-                ? _sp500Data.symbol === 'ES_CONVERTED'
-                    ? 'SPY × 9.5 (Conversion)'
-                    : _sp500Data.symbol?.toUpperCase() || 'Source inconnue'
-                : null;
+            // Déterminer la source du prix avec mapping détaillé
+            const priceSource = this.getDetailedSourceInfo(_sp500Data || null);
             await client.query(`
               INSERT INTO rouge_pulse_analyses
               (impact_score, market_narrative, high_impact_events, asset_analysis, trading_recommendation, raw_analysis, sp500_price, price_source, technical_levels, es_futures_analysis, bot_signal, agent_state, next_session_levels, created_at)
@@ -646,6 +739,40 @@ class RougePulseAgent extends BaseAgentSimple_1.BaseAgentSimple {
         catch {
             console.warn(`[${this.agentName}] Failed to fetch news context`);
             return [];
+        }
+        finally {
+            client.release();
+        }
+    }
+    async getLatestSP500FromDB() {
+        const client = await this.pool.connect();
+        try {
+            // Prioritize ES_CONVERTED, then SPY, then others
+            const res = await client.query(`
+        SELECT * FROM market_data 
+        WHERE symbol IN ('ES_CONVERTED', 'SPY', 'ES', 'US500')
+        ORDER BY timestamp DESC 
+        LIMIT 1
+      `);
+            if (res.rows.length > 0) {
+                const row = res.rows[0];
+                return {
+                    current: parseFloat(row.price),
+                    change: parseFloat(row.change_abs || 0),
+                    percent_change: parseFloat(row.change_percent || 0),
+                    high: parseFloat(row.high || row.price),
+                    low: parseFloat(row.low || row.price),
+                    open: parseFloat(row.open || row.price),
+                    previous_close: parseFloat(row.previous_close || row.price),
+                    timestamp: new Date(row.timestamp).getTime() / 1000,
+                    symbol: row.symbol,
+                };
+            }
+            return null;
+        }
+        catch (e) {
+            console.error(`[${this.agentName}] Error fetching SP500 from DB:`, e);
+            return null;
         }
         finally {
             client.release();

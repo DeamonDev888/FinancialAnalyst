@@ -1,4 +1,3 @@
-
 import { Pool } from 'pg';
 
 const pool = new Pool({
@@ -12,10 +11,14 @@ const pool = new Pool({
 async function checkSymbols() {
   const client = await pool.connect();
   try {
-    const res = await client.query('SELECT DISTINCT symbol, COUNT(*) FROM market_data GROUP BY symbol');
+    const res = await client.query(
+      'SELECT DISTINCT symbol, COUNT(*) FROM market_data GROUP BY symbol'
+    );
     console.table(res.rows);
-    
-    const recent = await client.query('SELECT symbol, price, timestamp FROM market_data ORDER BY timestamp DESC LIMIT 10');
+
+    const recent = await client.query(
+      'SELECT symbol, price, timestamp FROM market_data ORDER BY timestamp DESC LIMIT 10'
+    );
     console.log('\nRecent entries:');
     console.table(recent.rows);
   } catch (e) {

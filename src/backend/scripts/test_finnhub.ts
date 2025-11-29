@@ -1,4 +1,3 @@
-
 import { FinnhubClient } from '../ingestion/FinnhubClient';
 
 async function testFinnhub() {

@@ -50,15 +50,12 @@ class NewsDataManager {
         // Importer le NewsAggregator ici pour éviter les imports circulaires
         const { NewsAggregator } = await Promise.resolve().then(() => __importStar(require('../ingestion/NewsAggregator')));
         const aggregator = new NewsAggregator();
-        // 1. Récupérer les nouvelles des 3 sources
-        console.log('📰 Fetching news from sources...');
-        const [zeroHedge, cnbc, financialJuice] = await Promise.all([
-            aggregator.fetchZeroHedgeHeadlines(),
-            aggregator.fetchCNBCMarketNews(),
-            aggregator.fetchFinancialJuice(),
-        ]);
-        const allNews = [...zeroHedge, ...cnbc, ...financialJuice];
-        console.log(`📊 Fetched ${allNews.length} news items`);
+        // 1. Récupérer les nouvelles de TOUTES les sources via l'agrégateur
+        console.log('📰 Fetching news from all sources...');
+        // fetchAndSaveAllNews récupère ZeroHedge, CNBC, FinancialJuice, Finnhub, FRED, et TradingEconomics
+        // et les sauvegarde déjà dans la DB brute. Nous récupérons le tableau pour le processing.
+        const allNews = await aggregator.fetchAndSaveAllNews();
+        console.log(`📊 Fetched ${allNews.length} total news items from all sources`);
         // 2. Traiter et nettoyer les données
         console.log('🧹 Processing and cleaning news data...');
         const processedNews = await this.processor.processNews(allNews);

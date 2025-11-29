@@ -19,18 +19,37 @@ class VixPlaywrightScraper {
     }
     async init() {
         if (!this.browser) {
-            this.browser = await playwright_1.chromium.launch({
-                headless: true,
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--disable-gpu',
-                ],
-            });
+            try {
+                // Attendre un court délai pour éviter les race conditions
+                await new Promise(resolve => setTimeout(resolve, 100));
+                this.browser = await playwright_1.chromium.launch({
+                    headless: true,
+                    args: [
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-accelerated-2d-canvas',
+                        '--no-first-run',
+                        '--no-zygote',
+                        '--disable-gpu',
+                        '--disable-background-timer-throttling',
+                        '--disable-backgrounding-occluded-windows',
+                        '--disable-breakpad',
+                        '--disable-client-side-phishing-detection',
+                        '--disable-component-extensions-with-background-pages',
+                        '--disable-extensions-except',
+                        '--disable-web-security',
+                        '--single-process',
+                        '--disable-features=VizDisplayCompositor',
+                    ],
+                    timeout: 30000,
+                });
+                console.log('[VixPlaywrightScraper] Browser launched successfully');
+            }
+            catch (error) {
+                console.error('[VixPlaywrightScraper] Failed to launch browser:', error);
+                throw new Error(`Browser launch failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
         }
     }
     async close() {
@@ -40,38 +59,61 @@ class VixPlaywrightScraper {
         }
     }
     async createStealthPage() {
+        // Vérifier si le navigateur est initialisé et connecté
+        if (!this.browser || !this.browser.isConnected()) {
+            console.log('[VixPlaywrightScraper] Browser disconnected or not initialized, (re)starting...');
+            await this.close();
+            await this.init();
+        }
         if (!this.browser)
-            throw new Error('Browser not initialized');
-        const context = await this.browser.newContext({
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-            viewport: { width: 1920, height: 1080 },
-            extraHTTPHeaders: {
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Upgrade-Insecure-Requests': '1',
-                Referer: 'https://www.google.com/',
-                Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            },
-        });
-        const page = await context.newPage();
-        // Simuler comportement humain
-        await page.addInitScript(() => {
-            // @ts-ignore
-            Object.defineProperty(navigator, 'webdriver', { get: () => false });
-            // @ts-ignore
-            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-            // @ts-ignore
-            Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-            // @ts-ignore
-            window.chrome = { runtime: {} };
-            // @ts-ignore
-            Object.defineProperty(navigator, 'permissions', {
-                get: () => ({
-                    query: () => Promise.resolve({ state: 'granted' }),
-                }),
+            throw new Error('Browser initialization failed');
+        try {
+            const context = await this.browser.newContext({
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+                viewport: { width: 1920, height: 1080 },
+                extraHTTPHeaders: {
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'Upgrade-Insecure-Requests': '1',
+                    Referer: 'https://www.google.com/',
+                    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                },
             });
-        });
-        return page;
+            const page = await context.newPage();
+            // Simuler comportement humain
+            await page.addInitScript(() => {
+                // @ts-ignore
+                Object.defineProperty(navigator, 'webdriver', { get: () => false });
+                // @ts-ignore
+                Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                // @ts-ignore
+                Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+                // @ts-ignore
+                window.chrome = { runtime: {} };
+                // @ts-ignore
+                Object.defineProperty(navigator, 'permissions', {
+                    get: () => ({
+                        query: () => Promise.resolve({ state: 'granted' }),
+                    }),
+                });
+            });
+            return page;
+        }
+        catch (error) {
+            console.warn('[VixPlaywrightScraper] Error creating page, attempting one restart...', error);
+            // Tentative de récupération : redémarrer le navigateur
+            await this.close();
+            await this.init();
+            if (!this.browser)
+                throw new Error('Browser recovery failed');
+            // Réessayer une fois
+            const context = await this.browser.newContext({
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+                viewport: { width: 1920, height: 1080 },
+            });
+            const page = await context.newPage();
+            return page;
+        }
     }
     async humanDelay(page, min = 50, max = 200) {
         const delay = Math.random() * (max - min) + min;
@@ -135,14 +177,28 @@ class VixPlaywrightScraper {
         // Ordre de priorité : Investing (Meta tag ultra-rapide) -> Yahoo -> MarketWatch
         const sources = [
             { name: 'Investing.com', fn: () => this.scrapeInvesting(), timeout: 30000 }, // Plus rapide - meta tag
-            { name: 'Yahoo Finance', fn: () => this.scrapeYahoo(), timeout: 35000 }, // Réduit - optimisé
-            { name: 'MarketWatch', fn: () => this.scrapeMarketWatch(), timeout: 25000 }, // Réduit - CSS optimisé
+            // { name: 'Yahoo Finance', fn: () => this.scrapeYahoo(), timeout: 45000 }, // Désactivé - sélecteurs obsolètes
+            // { name: 'MarketWatch', fn: () => this.scrapeMarketWatch(), timeout: 35000 }, // Désactivé - URL invalide
         ];
+        // Scraper VVIX en parallèle
+        console.log('\n🎯 Démarrage VVIX scraping...');
+        const vvixResult = await this.scrapeVVIX();
         for (const source of sources) {
             console.log(`\n🎯 Démarrage ${source.name} (timeout: ${source.timeout}ms)...`);
             try {
                 // Timeout adapté par source + délai entre sources
                 const result = await this.scrapeWithTimeout(source.name, source.fn, source.timeout);
+                // Ajouter les données VVIX et l'analyse intelligente
+                result.vvix_data = vvixResult;
+                // Générer l'interprétation si on a des données VIX valides
+                if (result.value && vvixResult.value) {
+                    result.interpretation = this.generateVixInterpretation(result.value, vvixResult.value);
+                    console.log(`[ANALYSE] VIX=${result.value} + VVIX=${vvixResult.value} = ${result.interpretation.market_signal}`);
+                }
+                else if (result.value) {
+                    result.interpretation = this.generateVixInterpretation(result.value, null);
+                    console.log(`[ANALYSE] VIX=${result.value} (sans VVIX) = ${result.interpretation.market_signal}`);
+                }
                 primaryResults.push({ status: 'fulfilled', value: result });
                 console.log(`✅ ${source.name} terminé avec succès`);
                 // Délai plus long entre sources pour éviter détection
@@ -269,7 +325,7 @@ class VixPlaywrightScraper {
             console.log('[MarketWatch] Navigation optimisée VIX...');
             await page.goto('https://www.marketwatch.com/investing/index/vix', {
                 waitUntil: 'domcontentloaded', // Plus rapide
-                timeout: 20000, // Timeout plus court
+                timeout: 35000, // Timeout ajusté selon la configuration
             });
             await this.humanDelay(page, 1500, 3000);
             // STRATÉGIE 1: Utiliser les sélecteurs CSS qui fonctionnent (selon debug)
@@ -283,152 +339,20 @@ class VixPlaywrightScraper {
             const open = await this.extractText(page, '.intraday__open .value', 4000);
             const rangeText = await this.extractText(page, '.range__content', 4000);
             const [low, high] = this.parseRange(rangeText);
-            // Extraire les news MarketWatch avec dates de parution
+            // Extraire les news MarketWatch avec timeout et gestion d'erreur robuste
             const news = [];
             try {
-                console.log('[MarketWatch] Recherche des news avec dates...');
-                // Sélecteurs pour les articles avec métadonnées
-                const newsContainers = await page
-                    .locator('article.article, .article-item, .news-item, .stream-item')
-                    .all();
-                for (const container of newsContainers.slice(0, 8)) {
-                    try {
-                        // Extraire le titre et le lien
-                        const titleElement = await container
-                            .locator('a[href*="/story/"] h3, .headline, .title, h2')
-                            .first();
-                        const linkElement = await container.locator('a[href*="/story/"]').first();
-                        if ((await titleElement.isVisible()) && (await linkElement.isVisible())) {
-                            const title = await titleElement.textContent();
-                            const href = await linkElement.getAttribute('href');
-                            if (title && href && title.trim().length > 15) {
-                                // Nettoyer le titre
-                                const cleanTitle = title.replace(/^\d{1,2}:\d{2}\s*(AM|PM)\s*/i, '').trim();
-                                // Extraire la date de parution
-                                let publishedAt = new Date().toISOString();
-                                let relativeTime = '';
-                                let author = '';
-                                try {
-                                    // Essayer de trouver la date dans le conteneur
-                                    const dateSelectors = [
-                                        '.timestamp',
-                                        '.date',
-                                        '.published',
-                                        'time[datetime]',
-                                        '.article-timestamp',
-                                        '[data-testid="timestamp"]',
-                                        'span.timestamp',
-                                    ];
-                                    for (const dateSelector of dateSelectors) {
-                                        try {
-                                            const dateElement = await container.locator(dateSelector).first();
-                                            if (await dateElement.isVisible()) {
-                                                const dateText = await dateElement.textContent();
-                                                const datetime = await dateElement.getAttribute('datetime');
-                                                if (datetime) {
-                                                    publishedAt = new Date(datetime).toISOString();
-                                                }
-                                                else if (dateText) {
-                                                    // Parser les formats de date relatifs
-                                                    const parsedDate = this.parseRelativeDate(dateText);
-                                                    if (parsedDate) {
-                                                        publishedAt = parsedDate.toISOString();
-                                                        relativeTime = dateText.trim();
-                                                    }
-                                                }
-                                                break;
-                                            }
-                                        }
-                                        catch {
-                                            continue;
-                                        }
-                                    }
-                                    // Essayer de trouver l'auteur
-                                    const authorSelectors = ['.author', '.byline', '.reporter', 'span.author'];
-                                    for (const authorSelector of authorSelectors) {
-                                        try {
-                                            const authorElement = await container.locator(authorSelector).first();
-                                            if (await authorElement.isVisible()) {
-                                                author = ((await authorElement.textContent()) || '').trim();
-                                                if (author && !author.includes('MarketWatch')) {
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        catch {
-                                            continue;
-                                        }
-                                    }
-                                    // Si pas de date trouvée dans le conteneur, essayer dans le contenu HTML
-                                    if (publishedAt === new Date().toISOString()) {
-                                        const htmlContent = await container.innerHTML();
-                                        const dateMatches = htmlContent.match(/\b\d{1,2}:\d{2}\s*(AM|PM)\s*ET\b/gi) ||
-                                            htmlContent.match(/\b\d{1,2}:\d{2}\s*[AP]M\b/gi) ||
-                                            htmlContent.match(/\b\d{4}-\d{1,2}-\d{1,2}\b/g) ||
-                                            htmlContent.match(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/g);
-                                        if (dateMatches) {
-                                            const dateText = dateMatches[0];
-                                            const parsedDate = this.parseRelativeDate(dateText);
-                                            if (parsedDate) {
-                                                publishedAt = parsedDate.toISOString();
-                                                relativeTime = dateText.trim();
-                                            }
-                                        }
-                                    }
-                                }
-                                catch (e) {
-                                    console.log('[MarketWatch] Erreur extraction date/news:', e instanceof Error ? e.message : e);
-                                }
-                                news.push({
-                                    title: cleanTitle,
-                                    url: href.startsWith('http') ? href : `https://www.marketwatch.com${href}`,
-                                    published_at: publishedAt,
-                                    source_date: new Date(publishedAt),
-                                    relative_time: relativeTime,
-                                    author: author || '',
-                                });
-                            }
-                        }
-                    }
-                    catch {
-                        continue;
-                    }
-                }
-                // Si toujours pas assez de news, essayer l'approche plus simple
-                if (news.length < 5) {
-                    console.log('[MarketWatch] Approche alternative pour les news...');
-                    const fallbackElements = await page.locator('a[href*="/story/"]').all();
-                    for (const element of fallbackElements.slice(0, 10 - news.length)) {
-                        try {
-                            const title = await element.textContent();
-                            const href = await element.getAttribute('href');
-                            if (title && href && title.trim().length > 15) {
-                                // Nettoyer le titre
-                                const cleanTitle = title.replace(/^\d{1,2}:\d{2}\s*(AM|PM)\s*/i, '').trim();
-                                news.push({
-                                    title: cleanTitle,
-                                    url: href.startsWith('http') ? href : `https://www.marketwatch.com${href}`,
-                                    published_at: new Date().toISOString(),
-                                    source_date: new Date(),
-                                    relative_time: 'Recent',
-                                });
-                            }
-                        }
-                        catch {
-                            continue;
-                        }
-                    }
-                }
-                // Trier les news par date (plus récentes en premier)
-                news.sort((a, b) => {
-                    const dateA = a.source_date ? a.source_date.getTime() : 0;
-                    const dateB = b.source_date ? b.source_date.getTime() : 0;
-                    return dateB - dateA; // Plus récent d'abord
-                });
+                console.log('[MarketWatch] Recherche des news avec timeout...');
+                // Timeout global pour l'extraction des news
+                const newsExtraction = this.extractMarketWatchNewsWithTimeout(page);
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('MarketWatch news extraction timeout')), 6000));
+                const result = await Promise.race([newsExtraction, timeoutPromise]);
+                news.push(...result);
                 console.log(`[MarketWatch] News trouvées: ${news.length}`);
             }
             catch (e) {
-                console.log('[MarketWatch] Erreur extraction news:', e instanceof Error ? e.message : e);
+                console.log('[MarketWatch] Erreur extraction news (ignorée):', e instanceof Error ? e.message : e);
+                // Ne pas ajouter de news en cas d'erreur
             }
             return {
                 source: 'MarketWatch',
@@ -447,7 +371,10 @@ class VixPlaywrightScraper {
             throw new Error(`MarketWatch scrape failed: ${error instanceof Error ? error.message : error}`);
         }
         finally {
+            const context = page.context();
             await page.close();
+            if (context)
+                await context.close();
         }
     }
     async scrapeInvesting() {
@@ -553,7 +480,10 @@ class VixPlaywrightScraper {
             throw new Error(`Investing.com scrape failed: ${error instanceof Error ? error.message : error}`);
         }
         finally {
+            const context = page.context();
             await page.close();
+            if (context)
+                await context.close();
         }
     }
     // Méthode optimisée pour extraire les news rapidement
@@ -619,7 +549,7 @@ class VixPlaywrightScraper {
             // Gestion simplifiée et rapide du consentement Yahoo
             await page.goto('https://finance.yahoo.com/quote/%5EVIX', {
                 waitUntil: 'domcontentloaded',
-                timeout: 18000, // Timeout réduit
+                timeout: 25000, // Timeout augmenté pour consent handling
             });
             await this.humanDelay(page, 800, 1500); // Délai réduit
             // GESTION RAPIDE : Si redirection consentement, cliquer sur agree
@@ -677,7 +607,10 @@ class VixPlaywrightScraper {
             throw new Error(`Yahoo Finance scrape failed: ${error instanceof Error ? error.message : error}`);
         }
         finally {
+            const context = page.context();
             await page.close();
+            if (context)
+                await context.close();
         }
     }
     // Gestion spécialisée de la redirection consent.yahoo.com
@@ -764,17 +697,43 @@ class VixPlaywrightScraper {
             console.log('[Yahoo Finance] Erreur gestion popup:', e instanceof Error ? e.message : e);
         }
     }
-    // Extraction rapide des news Yahoo
+    // Extraction rapide des news Yahoo avec timeout
     async extractYahooNewsFast(page) {
         const news = [];
         try {
-            console.log('[Yahoo Finance] Extraction rapide des news...');
-            // Approche directe avec les liens
-            const newsLinks = await page.locator('a[href*="/news/"], h3 a, .js-stream-content a').all();
+            console.log('[Yahoo Finance] Extraction rapide des news (avec timeout)...');
+            // Utiliser un timeout global pour l'extraction des news
+            const newsPromise = this.extractYahooNewsWithTimeout(page);
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Yahoo news extraction timeout')), 8000));
+            const result = await Promise.race([newsPromise, timeoutPromise]);
+            console.log(`[Yahoo Finance] News extraites: ${result.length}`);
+            return result;
+        }
+        catch (e) {
+            console.log('[Yahoo Finance] Erreur extraction news (ignorée):', e instanceof Error ? e.message : e);
+            return []; // Retourner un tableau vide en cas d'erreur
+        }
+    }
+    // Méthode d'extraction avec timeout individuel
+    async extractYahooNewsWithTimeout(page) {
+        const news = [];
+        try {
+            // Approche directe avec les liens et timeout court
+            const newsLinks = await Promise.race([
+                page.locator('a[href*="/news/"], h3 a, .js-stream-content a').all(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Links timeout')), 3000)),
+            ]);
             for (const link of newsLinks.slice(0, 6)) {
                 try {
-                    const title = await link.textContent();
-                    const href = await link.getAttribute('href');
+                    // Timeout individuel pour chaque lien
+                    const title = await Promise.race([
+                        link.textContent(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Title timeout')), 500)),
+                    ]);
+                    const href = await Promise.race([
+                        link.getAttribute('href'),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Href timeout')), 500)),
+                    ]);
                     if (title && href && title.trim().length > 15) {
                         const cleanTitle = title.replace(/^\d+\s*(minutes?|hours?|days?)\s*ago/i, '').trim();
                         news.push({
@@ -788,15 +747,110 @@ class VixPlaywrightScraper {
                     }
                 }
                 catch {
-                    continue;
+                    continue; // Ignorer les erreurs individuelles
                 }
             }
-            console.log(`[Yahoo Finance] News extraites: ${news.length}`);
         }
         catch (e) {
-            console.log('[Yahoo Finance] Erreur extraction news:', e instanceof Error ? e.message : e);
+            console.log('[Yahoo Finance] Erreur extraction liens:', e instanceof Error ? e.message : e);
         }
         return news;
+    }
+    // Méthode d'extraction des news MarketWatch avec timeout
+    async extractMarketWatchNewsWithTimeout(page) {
+        const news = [];
+        try {
+            // Approche simplifiée avec timeout pour les articles
+            const newsContainers = await Promise.race([
+                page.locator('article.article, .article-item, .news-item, .stream-item').all(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Containers timeout')), 2000)),
+            ]);
+            for (const container of newsContainers.slice(0, 4)) {
+                // Réduit à 4 pour le timeout
+                try {
+                    // Timeout individuel pour chaque container
+                    const containerTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Container processing timeout')), 800));
+                    const newsProcessing = this.processMarketWatchContainer(container);
+                    const newsItem = await Promise.race([newsProcessing, containerTimeout]);
+                    if (newsItem) {
+                        news.push(newsItem);
+                    }
+                }
+                catch {
+                    continue; // Ignorer les erreurs individuelles
+                }
+            }
+            // Approche alternative simple si pas assez de news
+            if (news.length < 2) {
+                try {
+                    const fallbackLinks = await Promise.race([
+                        page.locator('a[href*="/story/"]').all(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Fallback timeout')), 1500)),
+                    ]);
+                    for (const element of fallbackLinks.slice(0, 3 - news.length)) {
+                        try {
+                            const title = await Promise.race([
+                                element.textContent(),
+                                new Promise((_, reject) => setTimeout(() => reject(new Error('Title timeout')), 300)),
+                            ]);
+                            const href = await Promise.race([
+                                element.getAttribute('href'),
+                                new Promise((_, reject) => setTimeout(() => reject(new Error('Href timeout')), 300)),
+                            ]);
+                            if (title && href && title.trim().length > 15) {
+                                const cleanTitle = title.replace(/^\d{1,2}:\d{2}\s*(AM|PM)\s*/i, '').trim();
+                                news.push({
+                                    title: cleanTitle,
+                                    url: href.startsWith('http') ? href : `https://www.marketwatch.com${href}`,
+                                    published_at: new Date().toISOString(),
+                                    source_date: new Date(),
+                                    relative_time: 'Recent',
+                                    author: '',
+                                });
+                            }
+                        }
+                        catch {
+                            continue;
+                        }
+                    }
+                }
+                catch {
+                    // Ignorer les erreurs de fallback
+                }
+            }
+        }
+        catch (e) {
+            console.log('[MarketWatch] Erreur extraction containers:', e instanceof Error ? e.message : e);
+        }
+        return news;
+    }
+    // Méthode pour traiter un container MarketWatch individuellement
+    async processMarketWatchContainer(container) {
+        try {
+            const titleElement = await container
+                .locator('a[href*="/story/"] h3, .headline, .title, h2')
+                .first();
+            const linkElement = await container.locator('a[href*="/story/"]').first();
+            if ((await titleElement.isVisible()) && (await linkElement.isVisible())) {
+                const title = await titleElement.textContent();
+                const href = await linkElement.getAttribute('href');
+                if (title && href && title.trim().length > 15) {
+                    const cleanTitle = title.replace(/^\d{1,2}:\d{2}\s*(AM|PM)\s*/i, '').trim();
+                    return {
+                        title: cleanTitle,
+                        url: href.startsWith('http') ? href : `https://www.marketwatch.com${href}`,
+                        published_at: new Date().toISOString(),
+                        source_date: new Date(),
+                        relative_time: 'Recent',
+                        author: '',
+                    };
+                }
+            }
+        }
+        catch {
+            // Ignorer les erreurs de traitement individuel
+        }
+        return null;
     }
     async extractText(page, selector, customTimeout) {
         try {
@@ -918,6 +972,335 @@ class VixPlaywrightScraper {
         }
         // Fallback: retourner maintenant
         return now;
+    }
+    // ===== NOUVELLES FONCTIONNALITÉS VIX/VVIX ANALYSE INTELLIGENTE =====
+    async scrapeVVIX() {
+        console.log('[VVIX] Début du scraping VVIX (volatilité de la volatilité)...');
+        const page = await this.createStealthPage();
+        try {
+            // VVIX est moins disponible, essayons plusieurs sources
+            const sources = [
+                { url: 'https://finance.yahoo.com/quote/%5EVVIX', name: 'Yahoo VVIX' },
+                { url: 'https://www.marketwatch.com/investing/future/vvix', name: 'MarketWatch VVIX' },
+                {
+                    url: 'https://www.investing.com/indices/cboe-volatility-index-vvix',
+                    name: 'Investing VVIX',
+                },
+            ];
+            for (const source of sources) {
+                try {
+                    console.log(`[VVIX] Tentative source: ${source.name}`);
+                    await page.goto(source.url, {
+                        waitUntil: 'domcontentloaded',
+                        timeout: 15000,
+                    });
+                    await this.humanDelay(page, 500, 1000);
+                    // Gérer consentement Yahoo si nécessaire
+                    if (source.url.includes('yahoo') && page.url().includes('consent')) {
+                        const agreeButton = page.locator('button[name="agree"]').first();
+                        if (await agreeButton.isVisible({ timeout: 2000 })) {
+                            await agreeButton.click();
+                            await page.waitForTimeout(1000);
+                            await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: 10000 });
+                        }
+                    }
+                    // Extraire la valeur VVIX avec différents sélecteurs
+                    const vvixValue = await this.extractVVIXValue(page);
+                    if (vvixValue) {
+                        console.log(`[VVIX] ✅ Succès depuis ${source.name}: ${vvixValue}`);
+                        return {
+                            source: source.name,
+                            value: vvixValue,
+                            change_abs: null,
+                            change_pct: null,
+                            last_update: new Date().toISOString(),
+                        };
+                    }
+                }
+                catch (e) {
+                    console.log(`[VVIX] ❌ Échec ${source.name}:`, e instanceof Error ? e.message : e);
+                    continue;
+                }
+            }
+            console.log("[VVIX] ❌ Aucune source n'a pu fournir de données VVIX");
+            return {
+                source: 'VVIX_Fallback',
+                value: null,
+                change_abs: null,
+                change_pct: null,
+                last_update: new Date().toISOString(),
+                error: 'VVIX data unavailable from all sources',
+            };
+        }
+        catch (error) {
+            console.log('[VVIX] Erreur critique:', error instanceof Error ? error.message : error);
+            return {
+                source: 'VVIX_Error',
+                value: null,
+                change_abs: null,
+                change_pct: null,
+                last_update: new Date().toISOString(),
+                error: error instanceof Error ? error.message : 'Unknown VVIX error',
+            };
+        }
+        finally {
+            const context = page.context();
+            await page.close();
+            if (context)
+                await context.close();
+        }
+    }
+    async extractVVIXValue(page) {
+        const selectors = [
+            // Sélecteurs Yahoo Finance
+            'fin-streamer[data-field="regularMarketPrice"][data-symbol="^VVIX"]',
+            '[data-testid="qsp-price"]',
+            // Sélecteurs génériques
+            '[data-test="instrument-price-last"]',
+            '.instrument-price_last',
+            // Sélecteurs Investing.com
+            '[data-test="instrument-price-last"]',
+            '.text-5xl',
+            '.font-bold',
+        ];
+        for (const selector of selectors) {
+            try {
+                const text = await this.extractText(page, selector, 2000);
+                const value = this.parseNumber(text);
+                if (value && value > 50 && value < 200) {
+                    // VVIX typiquement entre 50-200
+                    return value;
+                }
+            }
+            catch {
+                continue;
+            }
+        }
+        return null;
+    }
+    // Méthode principale d'analyse intelligente VIX/VVIX
+    generateVixInterpretation(vixValue, vvixValue) {
+        const alerts = [];
+        // 1. Analyse du niveau VIX
+        let level;
+        let sentiment;
+        let interpretation;
+        if (vixValue <= 12) {
+            level = 'VERY_LOW';
+            sentiment = 'BULLISH_CALM';
+            interpretation = 'Marché extrêmement calme et confiant. Faible volatilité attendue.';
+        }
+        else if (vixValue <= 15) {
+            level = 'LOW';
+            sentiment = 'BULLISH_CALM';
+            interpretation = 'Marché confiant avec faible volatilité. Climat de confiance établi.';
+        }
+        else if (vixValue <= 20) {
+            level = 'NORMAL';
+            sentiment = 'NEUTRAL';
+            interpretation = 'Marché dans la normale. Volatilité modérée attendue.';
+        }
+        else if (vixValue <= 25) {
+            level = 'NERVOUS';
+            sentiment = 'BEARISH_NERVOUS';
+            interpretation = 'Marché nerveux mais peut être haussier. Volatilité augmentée.';
+        }
+        else if (vixValue <= 35) {
+            level = 'HIGH';
+            sentiment = 'BEARISH_NERVOUS';
+            interpretation = 'Marché très nerveux. Forte volatilité et crainte.';
+        }
+        else {
+            level = 'EXTREME';
+            sentiment = 'CRITICAL';
+            interpretation = 'Marché en panique. Volatilité extrême et risque élevé.';
+        }
+        // 2. Calculs de volatilité attendue
+        const sqrt252 = Math.sqrt(252); // ~15.87 pour annualisation
+        const sqrt52 = Math.sqrt(52); // ~7.21 pour mensuelle
+        const sqrt12 = Math.sqrt(12); // ~3.46 pour hebdomadaire
+        const expected_monthly_volatility = vixValue / sqrt12;
+        const expected_weekly_volatility = vixValue / sqrt52;
+        const expected_daily_move_range = (vixValue / sqrt252) * 2; // 2 écart-types
+        // 3. Alertes VIX
+        if (vixValue >= 30) {
+            alerts.push({
+                type: 'CRITICAL',
+                message: `VIX extrêmement élevé (${vixValue.toFixed(1)}) - Marché en état de panique`,
+                threshold: 30,
+                current_value: vixValue,
+                indicator: 'VIX',
+            });
+        }
+        else if (vixValue >= 25) {
+            alerts.push({
+                type: 'WARNING',
+                message: `VIX élevé (${vixValue.toFixed(1)}) - Marché très nerveux`,
+                threshold: 25,
+                current_value: vixValue,
+                indicator: 'VIX',
+            });
+        }
+        else if (vixValue <= 12) {
+            alerts.push({
+                type: 'INFO',
+                message: `VIX très bas (${vixValue.toFixed(1)}) - Marché extrêmement calme`,
+                threshold: 12,
+                current_value: vixValue,
+                indicator: 'VIX',
+            });
+        }
+        // 4. Analyse VVIX si disponible
+        if (vvixValue) {
+            const ratio = vvixValue / vixValue;
+            // Alertes VVIX
+            if (vvixValue >= 130) {
+                alerts.push({
+                    type: 'CRITICAL',
+                    message: `VVIX critique (${vvixValue.toFixed(1)}) - Danger imminent de forte volatilité`,
+                    threshold: 130,
+                    current_value: vvixValue,
+                    indicator: 'VVIX',
+                });
+            }
+            else if (vvixValue >= 110) {
+                alerts.push({
+                    type: 'WARNING',
+                    message: `VVIX élevé (${vvixValue.toFixed(1)}) - Volatilité de la volatilité importante`,
+                    threshold: 110,
+                    current_value: vvixValue,
+                    indicator: 'VVIX',
+                });
+            }
+            else if (vvixValue <= 85) {
+                alerts.push({
+                    type: 'INFO',
+                    message: `VVIX faible (${vvixValue.toFixed(1)}) - Volatilité stable et prévisible`,
+                    threshold: 85,
+                    current_value: vvixValue,
+                    indicator: 'VVIX',
+                });
+            }
+            // Analyse combinée VIX/VVIX
+            if (vixValue > 20 && vvixValue > 120) {
+                alerts.push({
+                    type: 'CRITICAL',
+                    message: `Signal baissier critique: VIX=${vixValue.toFixed(1)} avec VVIX=${vvixValue.toFixed(1)}`,
+                    threshold: 120,
+                    current_value: vvixValue,
+                    indicator: 'RATIO',
+                });
+                sentiment = 'CRITICAL';
+                interpretation += ' SIGNAL BAISSIER CRITIQUE détecté par VVIX élevé.';
+            }
+            else if (vixValue > 20 && vvixValue < 100) {
+                alerts.push({
+                    type: 'WARNING',
+                    message: `Incohérence VIX/VVIX: VIX=${vixValue.toFixed(1)} mais VVIX=${vvixValue.toFixed(1)} faible`,
+                    threshold: 100,
+                    current_value: vvixValue,
+                    indicator: 'RATIO',
+                });
+                interpretation += ' Panique probablement non crédible - rebond possible.';
+            }
+            else if (vixValue <= 17 && vvixValue >= 110) {
+                alerts.push({
+                    type: 'WARNING',
+                    message: `Volatilité imminente: VIX bas (${vixValue.toFixed(1)}) mais VVIX élevé (${vvixValue.toFixed(1)})`,
+                    threshold: 110,
+                    current_value: vvixValue,
+                    indicator: 'RATIO',
+                });
+                interpretation += ' Attention: mouvement important attendu dans 24-72h.';
+            }
+            // Ratio VVIX/VIX
+            if (ratio > 5.5) {
+                alerts.push({
+                    type: 'WARNING',
+                    message: `Ratio VVIX/VIX élevé (${ratio.toFixed(1)}) - Volatilité excessivement volatile`,
+                    threshold: 5.5,
+                    current_value: ratio,
+                    indicator: 'RATIO',
+                });
+            }
+        }
+        // 5. Génération du signal de marché
+        const signal = this.generateMarketSignal(level, sentiment, vixValue, vvixValue);
+        return {
+            level,
+            sentiment,
+            interpretation,
+            expected_monthly_volatility: Math.round(expected_monthly_volatility * 100) / 100,
+            expected_weekly_volatility: Math.round(expected_weekly_volatility * 100) / 100,
+            expected_daily_move_range: Math.round(expected_daily_move_range * 100) / 100,
+            alerts,
+            market_signal: signal.signal,
+            signal_strength: signal.strength,
+        };
+    }
+    generateMarketSignal(level, sentiment, vixValue, vvixValue) {
+        let signal;
+        let strength;
+        switch (sentiment) {
+            case 'BULLISH_CALM':
+                signal = level === 'VERY_LOW' ? 'CAUTION' : 'STRONG_BUY';
+                strength = level === 'VERY_LOW' ? 60 : 85;
+                break;
+            case 'NEUTRAL':
+                signal = 'HOLD';
+                strength = 50;
+                break;
+            case 'BEARISH_NERVOUS':
+                if (vvixValue && vvixValue > 110) {
+                    signal = 'STRONG_SELL';
+                    strength = 90;
+                }
+                else {
+                    signal = 'SELL';
+                    strength = 70;
+                }
+                break;
+            case 'CRITICAL':
+                signal = 'STRONG_SELL';
+                strength = 95;
+                break;
+            default:
+                signal = 'HOLD';
+                strength = 50;
+        }
+        // Ajustements fins basés sur VVIX
+        if (vvixValue) {
+            if (vvixValue > 130) {
+                strength = Math.min(95, strength + 10); // Danger extrême
+            }
+            else if (vvixValue < 85) {
+                strength = Math.max(40, strength - 10); // Calme excessif
+            }
+        }
+        return { signal, strength };
+    }
+    // Méthode utilitaire pour formater les résultats
+    formatInterpretationForDisplay(interpretation) {
+        const lines = [];
+        lines.push(`📊 NIVEAU VIX: ${interpretation.level}`);
+        lines.push(`💭 Sentiment: ${interpretation.sentiment.replace('_', ' ')}`);
+        lines.push(`📝 Analyse: ${interpretation.interpretation}`);
+        lines.push('');
+        lines.push('📈 VOLATILITÉ ATTENDUE:');
+        lines.push(`   • Mensuelle: ±${interpretation.expected_monthly_volatility}%`);
+        lines.push(`   • Hebdomadaire: ±${interpretation.expected_weekly_volatility}%`);
+        lines.push(`   • Journalière: ±${interpretation.expected_daily_move_range}%`);
+        lines.push('');
+        lines.push(`🎯 Signal Marché: ${interpretation.market_signal.replace('_', ' ')} (force: ${interpretation.signal_strength}/100)`);
+        if (interpretation.alerts.length > 0) {
+            lines.push('');
+            lines.push('🚨 ALERTES:');
+            interpretation.alerts.forEach(alert => {
+                const emoji = alert.type === 'CRITICAL' ? '🔴' : alert.type === 'WARNING' ? '🟡' : '🔵';
+                lines.push(`   ${emoji} ${alert.message}`);
+            });
+        }
+        return lines;
     }
 }
 exports.VixPlaywrightScraper = VixPlaywrightScraper;

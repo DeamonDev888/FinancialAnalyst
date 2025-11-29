@@ -59,7 +59,7 @@ class VIXSetupAndGetter {
         return new Promise(resolve => {
             console.log('🚀 Lancement de Sierra Chart avec configuration VIX...');
             // Lancer Sierra Chart
-            const sierraProcess = (0, child_process_1.exec)(`"${this.sierraPath}/SierraChart_64.exe"`, (error, stdout, stderr) => {
+            const sierraProcess = (0, child_process_1.exec)(`"${this.sierraPath}/SierraChart_64.exe"`, (error, _stdout, _stderr) => {
                 if (error) {
                     console.error('❌ Erreur lancement Sierra Chart:', error.message);
                     resolve(false);

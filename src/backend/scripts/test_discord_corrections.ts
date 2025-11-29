@@ -119,7 +119,7 @@ async function testCorrections() {
         : 'Date non disponible';
 
       console.log(`${index + 1}. ${testCase.name}: ${formattedDate}`);
-    } catch (error) {
+    } catch {
       console.log(`${index + 1}. ${testCase.name}: Erreur - Date non disponible`);
     }
   });

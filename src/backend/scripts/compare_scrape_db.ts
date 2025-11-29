@@ -1,4 +1,3 @@
-
 import { Pool } from 'pg';
 import { TradingEconomicsScraper } from '../ingestion/TradingEconomicsScraper';
 import { NewsAggregator } from '../ingestion/NewsAggregator';
@@ -37,7 +36,7 @@ async function compareScrapeVsDb() {
            WHERE event_name = $1 AND country = $2 AND event_date = $3`,
           [event.event, event.country, event.date]
         );
-        
+
         if (res.rows.length > 0) {
           const dbEvent = res.rows[0];
           if (dbEvent.actual === event.actual && dbEvent.forecast === event.forecast) {
@@ -47,12 +46,14 @@ async function compareScrapeVsDb() {
           }
         }
       }
-      console.log(`   > Sample Check (5 items): ${matchCount} matches, ${mismatchCount} mismatches`);
+      console.log(
+        `   > Sample Check (5 items): ${matchCount} matches, ${mismatchCount} mismatches`
+      );
 
       // Check total count in DB for today/future
       const dbCountRes = await client.query('SELECT COUNT(*) FROM economic_events');
       console.log(`   > Database Total: ${dbCountRes.rows[0].count} events`);
-      
+
       // Check for duplicates
       const dupRes = await client.query(`
         SELECT event_name, event_date, COUNT(*) 
@@ -70,7 +71,7 @@ async function compareScrapeVsDb() {
     // --- 2. NEWS AGGREGATOR ---
     console.log('\n📰 2. NEWS AGGREGATOR COMPARISON');
     const newsAggregator = new NewsAggregator();
-    
+
     // Fetch a sample from one source to be quick (e.g., CNBC)
     console.log('   Fetching CNBC news (live)...');
     const cnbcNews = await newsAggregator.fetchCNBCMarketNews();
@@ -85,10 +86,14 @@ async function compareScrapeVsDb() {
         );
         if (res.rows.length > 0) foundInDb++;
       }
-      console.log(`   > Found in DB: ${foundInDb}/${cnbcNews.length} (This is good if you ran the pipeline recently)`);
-      
+      console.log(
+        `   > Found in DB: ${foundInDb}/${cnbcNews.length} (This is good if you ran the pipeline recently)`
+      );
+
       if (foundInDb < cnbcNews.length) {
-        console.log('   ℹ️ Some items are new and not yet in DB (Normal if pipeline not running continuously)');
+        console.log(
+          '   ℹ️ Some items are new and not yet in DB (Normal if pipeline not running continuously)'
+        );
       }
     }
 
@@ -100,10 +105,10 @@ async function compareScrapeVsDb() {
         HAVING COUNT(*) > 1
     `);
     if (newsDup.rows.length > 0) {
-        console.log(`   ❌ DUPLICATES FOUND: ${newsDup.rows.length} duplicate news items!`);
-        console.log('   Optimization Tip: Ensure "ON CONFLICT" clause is used in INSERTs.');
+      console.log(`   ❌ DUPLICATES FOUND: ${newsDup.rows.length} duplicate news items!`);
+      console.log('   Optimization Tip: Ensure "ON CONFLICT" clause is used in INSERTs.');
     } else {
-        console.log(`   ✅ No duplicates found in News.`);
+      console.log(`   ✅ No duplicates found in News.`);
     }
 
     // --- 3. VIX DATA ---
@@ -116,11 +121,10 @@ async function compareScrapeVsDb() {
     `);
     console.log(`   > Recent VIX entries in DB: ${vixData.rows.length}`);
     if (vixData.rows.length > 0) {
-        vixData.rows.forEach(r => console.log(`     [${r.timestamp.toISOString()}] ${r.price}`));
+      vixData.rows.forEach(r => console.log(`     [${r.timestamp.toISOString()}] ${r.price}`));
     } else {
-        console.log('   ⚠️ No VIX data found in market_data table.');
+      console.log('   ⚠️ No VIX data found in market_data table.');
     }
-
   } catch (error) {
     console.error('❌ Error during comparison:', error);
   } finally {

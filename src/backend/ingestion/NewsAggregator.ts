@@ -199,7 +199,7 @@ export class NewsAggregator {
   async fetchTradingEconomicsCalendar(): Promise<NewsItem[]> {
     try {
       const events = await this.teScraper.scrapeUSCalendar();
-      
+
       // Sauvegarder les événements bruts dans leur propre table
       await this.teScraper.saveEvents(events);
 
@@ -210,7 +210,7 @@ export class NewsAggregator {
         url: 'https://tradingeconomics.com/united-states/calendar',
         timestamp: event.date,
         sentiment: 'neutral', // À analyser
-        content: `Importance: ${event.importance}/3. Previous: ${event.previous}`
+        content: `Importance: ${event.importance}/3. Previous: ${event.previous}`,
       }));
     } catch (error) {
       console.error('Error fetching TradingEconomics calendar:', error);
@@ -233,7 +233,11 @@ export class NewsAggregator {
           let assetType = 'ETF';
           let symbol = stockData.symbol;
 
-          if (stockData.symbol.includes('ES_FUTURES') || stockData.symbol.includes('ES_CONVERTED') || stockData.symbol.includes('ES_FROM_')) {
+          if (
+            stockData.symbol.includes('ES_FUTURES') ||
+            stockData.symbol.includes('ES_CONVERTED') ||
+            stockData.symbol.includes('ES_FROM_')
+          ) {
             assetType = 'FUTURES';
             symbol = 'ES'; // Standardiser pour ES Futures
           } else if (stockData.symbol === 'SPY') {
@@ -257,17 +261,22 @@ export class NewsAggregator {
               stockData.high,
               stockData.low,
               stockData.open,
-              stockData.previous_close
+              stockData.previous_close,
             ]
           );
 
           // Log détaillé pour comprendre la source des données
-          const sourceInfo = stockData.symbol.includes('ES_FUTURES') ? ' (Futures directs)' :
-                            stockData.symbol.includes('ES_FROM_SPY') ? ' (via SPY)' :
-                            stockData.symbol.includes('ES_FROM_QQQ') ? ' (via QQQ)' :
-                            ' (ETF)';
+          const sourceInfo = stockData.symbol.includes('ES_FUTURES')
+            ? ' (Futures directs)'
+            : stockData.symbol.includes('ES_FROM_SPY')
+              ? ' (via SPY)'
+              : stockData.symbol.includes('ES_FROM_QQQ')
+                ? ' (via QQQ)'
+                : ' (ETF)';
 
-          console.log(`✅ Market data saved for ${symbol}${sourceInfo}: ${stockData.current.toFixed(2)} (${stockData.change > 0 ? '+' : ''}${stockData.percent_change.toFixed(2)}%)`);
+          console.log(
+            `✅ Market data saved for ${symbol}${sourceInfo}: ${stockData.current.toFixed(2)} (${stockData.change > 0 ? '+' : ''}${stockData.percent_change.toFixed(2)}%)`
+          );
         } finally {
           client.release();
         }

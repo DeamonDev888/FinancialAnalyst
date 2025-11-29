@@ -148,7 +148,7 @@ class SierraChartDTCClient extends events_1.EventEmitter {
                     const message = JSON.parse(line);
                     this.processMessage(message);
                 }
-                catch (e) {
+                catch {
                     // Si ce n'est pas du JSON, essayer d'extraire des nombres
                     this.extractMarketData(dataStr);
                 }

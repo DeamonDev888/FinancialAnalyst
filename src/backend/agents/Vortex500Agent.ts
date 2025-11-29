@@ -216,8 +216,6 @@ export class Vortex500Agent extends BaseAgentSimple {
     };
   }
 
-
-
   /**
    * Analyse finale robuste avec fallback multiples
    */

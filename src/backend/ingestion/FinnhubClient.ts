@@ -135,7 +135,6 @@ export class FinnhubClient {
     }
   }
 
-  
   /**
    * Récupère spécifiquement les données du contrat future ES (E-mini S&P 500)
    * Méthode améliorée avec scraping prioritaire pour obtenir le vrai prix du contrat future S&P500
@@ -157,14 +156,22 @@ export class FinnhubClient {
         if (futuresData.zero_hedge_analysis) {
           console.log(`[Finnhub] 📊 Niveaux ZeroHedge:`);
           if (futuresData.support_levels && futuresData.support_levels.length > 0) {
-            console.log(`[Finnhub]   Supports: [${futuresData.support_levels.slice(0, 5).join(', ')}${futuresData.support_levels.length > 5 ? '...' : ''}]`);
+            console.log(
+              `[Finnhub]   Supports: [${futuresData.support_levels.slice(0, 5).join(', ')}${futuresData.support_levels.length > 5 ? '...' : ''}]`
+            );
           }
           if (futuresData.resistance_levels && futuresData.resistance_levels.length > 0) {
-            console.log(`[Finnhub]   Résistances: [${futuresData.resistance_levels.slice(0, 5).join(', ')}${futuresData.resistance_levels.length > 5 ? '...' : ''}]`);
+            console.log(
+              `[Finnhub]   Résistances: [${futuresData.resistance_levels.slice(0, 5).join(', ')}${futuresData.resistance_levels.length > 5 ? '...' : ''}]`
+            );
           }
-          console.log(`[Finnhub]   Sentiment ZeroHedge: ${futuresData.zero_hedge_analysis.sentiment}`);
+          console.log(
+            `[Finnhub]   Sentiment ZeroHedge: ${futuresData.zero_hedge_analysis.sentiment}`
+          );
           if (futuresData.zero_hedge_analysis.key_messages.length > 0) {
-            console.log(`[Finnhub]   Messages clés: ${futuresData.zero_hedge_analysis.key_messages.slice(0, 2).join(' | ')}`);
+            console.log(
+              `[Finnhub]   Messages clés: ${futuresData.zero_hedge_analysis.key_messages.slice(0, 2).join(' | ')}`
+            );
           }
         }
 
@@ -181,7 +188,10 @@ export class FinnhubClient {
         };
       }
     } catch (error) {
-      console.log(`[Finnhub] Échec scraping futures:`, error instanceof Error ? error.message : error);
+      console.log(
+        `[Finnhub] Échec scraping futures:`,
+        error instanceof Error ? error.message : error
+      );
     }
 
     // PRIORITÉ 1B: Scraper des vrais contrats futures (sans ZeroHedge)
@@ -207,15 +217,18 @@ export class FinnhubClient {
         };
       }
     } catch (error) {
-      console.log(`[Finnhub] Échec scraping futures backup:`, error instanceof Error ? error.message : error);
+      console.log(
+        `[Finnhub] Échec scraping futures backup:`,
+        error instanceof Error ? error.message : error
+      );
     }
 
     // PRIORITÉ 2: API Finnhub avec symboles futures
     console.log(`[Finnhub] 2️⃣ Tentative API Finnhub avec symboles futures...`);
     const futureSymbols = [
-      'ES=F',      // Yahoo Finance format
-      'ES1!',      // Interactive Brokers format
-      '@ES.1',     // TD Ameritrade format
+      'ES=F', // Yahoo Finance format
+      'ES1!', // Interactive Brokers format
+      '@ES.1', // TD Ameritrade format
       'E-mini S&P 500', // Descriptif
     ];
 
@@ -226,7 +239,8 @@ export class FinnhubClient {
 
         if (data && data.current && data.current > 0) {
           // Vérifier si le prix semble correct pour les ES Futures (généralement > 4000)
-          if (data.current > 1000) { // Les ES futures sont autour de 4000-5000
+          if (data.current > 1000) {
+            // Les ES futures sont autour de 4000-5000
             console.log(
               `[Finnhub] ✅ ES Futures réussi via API ${symbol}: ${data.current.toFixed(2)} (${data.change > 0 ? '+' : ''}${data.percent_change.toFixed(2)}%)`
             );
@@ -235,11 +249,16 @@ export class FinnhubClient {
               symbol: 'ES_FUTURES_API',
             };
           } else {
-            console.log(`[Finnhub] ⚠️ Prix incorrect pour ${symbol}: ${data.current} (trop bas pour ES Futures)`);
+            console.log(
+              `[Finnhub] ⚠️ Prix incorrect pour ${symbol}: ${data.current} (trop bas pour ES Futures)`
+            );
           }
         }
       } catch (error) {
-        console.log(`[Finnhub] Échec API avec ${symbol}:`, error instanceof Error ? error.message : error);
+        console.log(
+          `[Finnhub] Échec API avec ${symbol}:`,
+          error instanceof Error ? error.message : error
+        );
         continue;
       }
     }
@@ -317,7 +336,9 @@ export class FinnhubClient {
       console.error(`[Finnhub] Erreur récupération QQQ:`, error);
     }
 
-    console.error(`[Finnhub] ❌ Impossible de récupérer les données S&P 500 avec toutes les méthodes`);
+    console.error(
+      `[Finnhub] ❌ Impossible de récupérer les données S&P 500 avec toutes les méthodes`
+    );
     return null;
   }
 

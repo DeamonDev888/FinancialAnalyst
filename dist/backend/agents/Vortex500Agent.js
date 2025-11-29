@@ -35,19 +35,16 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Vortex500Agent = void 0;
 const BaseAgentSimple_1 = require("./BaseAgentSimple");
-const NewsAggregator_1 = require("../ingestion/NewsAggregator");
 const NewsDatabaseService_1 = require("../database/NewsDatabaseService");
 const ToonFormatter_1 = require("../utils/ToonFormatter");
 const child_process_1 = require("child_process");
 const util_1 = require("util");
 const fs = __importStar(require("fs/promises"));
 class Vortex500Agent extends BaseAgentSimple_1.BaseAgentSimple {
-    newsAggregator;
     dbService;
     execAsync;
     constructor() {
         super('vortex500-agent');
-        this.newsAggregator = new NewsAggregator_1.NewsAggregator();
         this.dbService = new NewsDatabaseService_1.NewsDatabaseService();
         this.execAsync = (0, util_1.promisify)(child_process_1.exec);
     }
@@ -219,39 +216,6 @@ class Vortex500Agent extends BaseAgentSimple_1.BaseAgentSimple {
             news_count: 0,
             analysis_method: 'none',
         };
-    }
-    /**
-     * Scraping robust des nouvelles
-     */
-    async scrapeFreshNews() {
-        const sources = ['ZeroHedge', 'CNBC', 'FinancialJuice'];
-        console.log(`[${this.agentName}] Scraping from ${sources.join(', ')}...`);
-        try {
-            const [zeroHedge, cnbc, financialJuice] = await Promise.allSettled([
-                this.newsAggregator.fetchZeroHedgeHeadlines(),
-                this.newsAggregator.fetchCNBCMarketNews(),
-                this.newsAggregator.fetchFinancialJuice(),
-            ]);
-            const results = [zeroHedge, cnbc, financialJuice];
-            const counts = results.map(r => (r.status === 'fulfilled' ? r.value.length : 0));
-            const allNews = [];
-            results.forEach((result, index) => {
-                if (result.status === 'fulfilled') {
-                    allNews.push(...result.value);
-                    this.dbService.updateSourceStatus(sources[index], true);
-                }
-                else {
-                    console.error(`[${this.agentName}] Failed to scrape ${sources[index]}:`, result.reason);
-                    this.dbService.updateSourceStatus(sources[index], false, result.reason instanceof Error ? result.reason.message : 'Unknown error');
-                }
-            });
-            console.log(`[${this.agentName}] Scraped ${allNews.length} headlines (ZH: ${counts[0]}, CNBC: ${counts[1]}, FJ: ${counts[2]})`);
-            return allNews;
-        }
-        catch (error) {
-            console.error(`[${this.agentName}] Scraping failed:`, error);
-            return [];
-        }
     }
     /**
      * Analyse finale robuste avec fallback multiples

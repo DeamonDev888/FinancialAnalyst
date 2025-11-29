@@ -42,7 +42,6 @@ export class RougePulseAgent extends BaseAgentSimple {
   ) => Promise<{ stdout: string; stderr: string }>;
   private readonly pool: Pool;
 
-
   constructor() {
     super('rouge-pulse-agent');
     this.execAsync = promisify(exec);
@@ -53,7 +52,6 @@ export class RougePulseAgent extends BaseAgentSimple {
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || '9022',
     });
-
   }
 
   async analyzeEconomicEvents(): Promise<Record<string, unknown> | { error: string }> {
@@ -61,11 +59,15 @@ export class RougePulseAgent extends BaseAgentSimple {
 
     try {
       // 0. Récupérer les prix temps réel du S&P 500 depuis la DB
-      console.log(`[${this.agentName}] 📈 Récupération des données S&P 500 depuis la base de données...`);
+      console.log(
+        `[${this.agentName}] 📈 Récupération des données S&P 500 depuis la base de données...`
+      );
       const sp500Data = await this.getLatestSP500FromDB();
 
       if (!sp500Data) {
-        console.warn(`[${this.agentName}] ⚠️ Impossible de récupérer les données S&P 500 depuis la DB`);
+        console.warn(
+          `[${this.agentName}] ⚠️ Impossible de récupérer les données S&P 500 depuis la DB`
+        );
       } else {
         console.log(
           `[${this.agentName}] ✅ S&P 500 (DB): ${sp500Data.current.toFixed(2)} (${sp500Data.percent_change > 0 ? '+' : ''}${sp500Data.percent_change.toFixed(2)}%)`
@@ -134,39 +136,39 @@ export class RougePulseAgent extends BaseAgentSimple {
 
     // Mapping des sources avec descriptions détaillées
     const sourceMapping: { [key: string]: () => string } = {
-      'ES_CONVERTED': () => {
+      ES_CONVERTED: () => {
         const originalPrice = current && current > 1000 ? (current / 9.5).toFixed(2) : 'N/A';
         return `🔄 SPY ETF Converti (${originalPrice} × 9.5) → ES Futures`;
       },
-      'ES_FROM_SPY': () => {
+      ES_FROM_SPY: () => {
         const originalPrice = current && current > 1000 ? (current / 9.5).toFixed(2) : 'N/A';
         return `🔄 SPY ETF Backup (${originalPrice} × 9.5) → ES Futures`;
       },
-      'ES_FROM_QQQ': () => {
+      ES_FROM_QQQ: () => {
         const originalPrice = current && current > 1000 ? (current / 12.0).toFixed(2) : 'N/A';
         return `🔄 QQQ ETF Backup (${originalPrice} × 12.0) → ES Futures`;
       },
       'ES_Investing.com': () => {
         return `📊 Investing.com (ES Futures) - Scraping Direct`;
       },
-      'ES_Yahoo_Finance': () => {
+      ES_Yahoo_Finance: () => {
         return `📈 Yahoo Finance (ES Futures) - Scraping Direct`;
       },
-      'ES_FUTURES_API': () => {
+      ES_FUTURES_API: () => {
         return `🔗 API Finnhub (ES Futures) - Données Brutes`;
       },
-      'ES': () => {
+      ES: () => {
         return `✅ ES Futures - Source Principale`;
       },
-      'SPY': () => {
+      SPY: () => {
         return `💰 SPY ETF - Données Brutes`;
       },
-      'QQQ': () => {
+      QQQ: () => {
         return `🚀 QQQ ETF - Données Brutes`;
       },
-      'US500': () => {
+      US500: () => {
         return `🇺🇸 US500 Index - Données Brutes`;
-      }
+      },
     };
 
     // Chercher le motif dans le symbole
@@ -193,7 +195,11 @@ export class RougePulseAgent extends BaseAgentSimple {
     if (!symbol || !current) return 'Inconnue';
 
     // Haute confiance pour les vrais ES Futures
-    if (symbol.includes('Investing.com') || symbol.includes('Yahoo_Finance') || symbol.includes('FUTURES_API')) {
+    if (
+      symbol.includes('Investing.com') ||
+      symbol.includes('Yahoo_Finance') ||
+      symbol.includes('FUTURES_API')
+    ) {
       return '🔥 Élevée (Futures Direct)';
     }
 
@@ -241,7 +247,7 @@ export class RougePulseAgent extends BaseAgentSimple {
       const sp500Price = technicalLevels?.current_price || null; // Define sp500Price for the new INSERT statement
 
       // Déterminer la source du prix avec mapping détaillé
-      const priceSource = this.getDetailedSourceInfo(_sp500Data);
+      const priceSource = this.getDetailedSourceInfo(_sp500Data || null);
 
       await client.query(
         `
@@ -877,7 +883,7 @@ export class RougePulseAgent extends BaseAgentSimple {
         ORDER BY timestamp DESC 
         LIMIT 1
       `);
-      
+
       if (res.rows.length > 0) {
         const row = res.rows[0];
         return {
@@ -889,7 +895,7 @@ export class RougePulseAgent extends BaseAgentSimple {
           open: parseFloat(row.open || row.price),
           previous_close: parseFloat(row.previous_close || row.price),
           timestamp: new Date(row.timestamp).getTime() / 1000,
-          symbol: row.symbol
+          symbol: row.symbol,
         };
       }
       return null;

@@ -1,4 +1,3 @@
-
 import { NewsAggregator } from '../ingestion/NewsAggregator';
 
 async function testMarketDataFetch() {

@@ -25,7 +25,11 @@
     "scrape:inv": "ts-node run.ts --scrape-inv",
     "db:init": "ts-node create_database.ts",
     "db:stats": "ts-node run.ts --status",
-    "pipeline": "ts-node src/backend/scripts/run_news_data_pipeline.ts",
+    "pipeline": "ts-node src/backend/scripts/enhanced_news_pipeline.ts",
+    "pipeline:legacy": "ts-node src/backend/scripts/run_news_data_pipeline.ts",
+    "maintenance": "ts-node src/backend/scripts/automated_maintenance.ts",
+    "validate:data": "ts-node src/backend/scripts/validate_data_quality.ts",
+    "test:scrapers": "ts-node src/backend/scripts/test_scrapers.ts",
     "sentiment": "ts-node src/backend/scripts/run_agent_sentiment.ts",
     "vortex500": "ts-node -e \"import { Vortex500Agent } from './src/backend/agents/Vortex500Agent'; const agent = new Vortex500Agent(); agent.analyzeMarketSentiment(true).then(console.log);\"",
     "vortex500:force": "ts-node -e \"import { Vortex500Agent } from './src/backend/agents/Vortex500Agent'; const agent = new Vortex500Agent(); agent.analyzeMarketSentiment(true).then(console.log);\"",
@@ -46,11 +50,11 @@
     "db:analyze": "ts-node src/backend/scripts/database_analysis.ts",
     "db:quick": "ts-node src/backend/scripts/quick_db_analysis.ts",
     "db:cleanup": "ts-node src/backend/scripts/db_cleanup.ts",
-    "test:scrapers": "ts-node src/backend/scripts/test_scrapers.ts",
     "test:playwright": "ts-node src/backend/scripts/test_playwright_vix.ts",
     "scrape:te": "ts-node src/backend/scripts/scrape_trading_economics.ts",
     "rouge:pulse": "ts-node src/backend/scripts/run_rouge_pulse.ts",
-    "scrape:crypto": "ts-node src/backend/scripts/scrape_binance.ts"
+    "scrape:crypto": "ts-node src/backend/scripts/scrape_binance.ts",
+    "scrape:bls": "ts-node src/backend/scripts/scrape_bls.ts"
   },
   "keywords": [
     "trading",
@@ -70,6 +74,9 @@
     "node-cron": "^4.2.1",
     "pg": "^8.11.3",
     "playwright": "^1.56.1",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "sqlite3": "^5.1.7",
     "ws": "^8.14.2",
     "zod": "^3.22.4"

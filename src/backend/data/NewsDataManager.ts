@@ -54,7 +54,7 @@ export class NewsDataManager {
     // fetchAndSaveAllNews récupère ZeroHedge, CNBC, FinancialJuice, Finnhub, FRED, et TradingEconomics
     // et les sauvegarde déjà dans la DB brute. Nous récupérons le tableau pour le processing.
     const allNews = await aggregator.fetchAndSaveAllNews();
-    
+
     console.log(`📊 Fetched ${allNews.length} total news items from all sources`);
 
     // 2. Traiter et nettoyer les données

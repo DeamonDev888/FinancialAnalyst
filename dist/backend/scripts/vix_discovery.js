@@ -345,7 +345,7 @@ async function main() {
     discovery.on('authenticated', () => {
         console.log('🎉 Discovery lancé !\n');
     });
-    discovery.on('symbolDiscovered', (symbolInfo) => {
+    discovery.on('symbolDiscovered', (_symbolInfo) => {
         // Info déjà affichée dans handleMarketData
     });
     try {

@@ -65,8 +65,8 @@ class VixombreAgent extends BaseAgentSimple_1.BaseAgentSimple {
             // 1. Tester la connexion à la base de données
             const dbConnected = await this.testDatabaseConnection();
             if (!dbConnected) {
-                console.log(`[${this.agentName}] Database not connected - trying scraping fallback`);
-                return this.performScrapingFallback();
+                console.log(`[${this.agentName}] Database not connected - cannot proceed`);
+                return { error: 'Database not connected and scraping fallback is disabled.' };
             }
             console.log(`[${this.agentName}] Using DATABASE-FIRST mode`);
             // 2. Essayer d'obtenir les données VIX depuis la base de données
@@ -75,14 +75,621 @@ class VixombreAgent extends BaseAgentSimple_1.BaseAgentSimple {
                 console.log(`[${this.agentName}] Found ${vixData.length} VIX records in DATABASE`);
                 return this.performDatabaseAnalysis(vixData);
             }
-            console.log(`[${this.agentName}] No VIX data in database - scraping fresh data`);
-            return this.performScrapingFallback();
+            console.log(`[${this.agentName}] No VIX data in database - cannot proceed`);
+            return { error: 'No VIX data found in database. Please run ingestion pipeline.' };
         }
         catch (error) {
             console.error(`[${this.agentName}] Analysis failed:`, error);
             return {
                 error: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
             };
+        }
+    }
+    /**
+     * NOUVELLE METHODE: Analyse VIX avec VVIX et scraping intelligent
+     */
+    async analyzeVixWithVVIX() {
+        console.log(`[${this.agentName}] 🚀 Starting Enhanced VIX/VVIX Analysis...`);
+        try {
+            // 1. Lancer le scraper complet avec VVIX et analyse intelligente
+            console.log(`[${this.agentName}] 📊 Starting VIX/VVIX scraping with intelligent analysis...`);
+            const results = await this.scraper.scrapeAll();
+            console.log(`[${this.agentName}] ✅ Scraper completed. Found ${results.filter(r => r.value !== null).length} valid results`);
+            // 2. Traiter les résultats avec VVIX
+            const validResults = results.filter(r => r.value !== null);
+            if (validResults.length === 0) {
+                return { error: 'No valid VIX data found from any source.' };
+            }
+            // 3. Obtenir les données VVIX et interprétations
+            let vvixData = null;
+            let interpretation = null;
+            for (const result of validResults) {
+                if (result.vvix_data && result.vvix_data.value) {
+                    vvixData = result.vvix_data;
+                }
+                if (result.interpretation) {
+                    interpretation = result.interpretation;
+                }
+            }
+            // 4. Créer l'analyse complète avec VVIX
+            const analysis = this.createEnhancedVixAnalysis(validResults, vvixData, interpretation);
+            // 5. Sauvegarder dans la base de données
+            await this.saveEnhancedAnalysisToDatabase(analysis);
+            return analysis;
+        }
+        catch (error) {
+            console.error(`[${this.agentName}] Enhanced VIX/VVIX analysis failed:`, error);
+            return {
+                error: `Enhanced analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            };
+        }
+    }
+    /**
+     * Crée une analyse VIX enrichie avec VVIX et interprétation
+     */
+    createEnhancedVixAnalysis(vixResults, vvixData, interpretation) {
+        // Calculer les valeurs VIX consensus
+        const validValues = vixResults.filter(r => r.value !== null).map(r => r.value);
+        const consensusValue = validValues.length > 0 ? validValues.reduce((a, b) => a + b, 0) / validValues.length : 0;
+        console.log(`[${this.agentName}] 📈 VIX Consensus: ${consensusValue.toFixed(2)} (from ${validValues.length} sources)`);
+        if (vvixData && vvixData.value) {
+            console.log(`[${this.agentName}] 📊 VVIX Value: ${vvixData.value} (source: ${vvixData.source})`);
+        }
+        if (interpretation) {
+            console.log(`[${this.agentName}] 🎯 Analysis: ${interpretation.level} | Signal: ${interpretation.market_signal} | Strength: ${interpretation.signal_strength}/100`);
+            // Afficher les alertes importantes
+            interpretation.alerts
+                .filter(a => a.type === 'CRITICAL')
+                .forEach(alert => {
+                console.log(`[${this.agentName}] 🚨 CRITICAL ALERT: ${alert.message}`);
+            });
+        }
+        // Créer le résultat final
+        return {
+            metadata: {
+                analysis_timestamp: new Date().toISOString(),
+                market_status: this.determineMarketStatus(),
+                sources_scraped: vixResults.length,
+                sources_successful: validValues.length,
+                analysis_type: 'ENHANCED_VIX_VVIX_ANALYSIS',
+                data_source: 'web_scraping_with_intelligent_analysis',
+                vvix_available: vvixData?.value !== null,
+                interpretation_available: interpretation !== null,
+            },
+            current_vix_data: {
+                consensus_value: parseFloat(consensusValue.toFixed(2)),
+                sources: vixResults.map(r => ({
+                    source: r.source,
+                    value: r.value,
+                    change_pct: r.change_pct,
+                    last_update: r.last_update,
+                    interpretation: r.interpretation
+                        ? {
+                            level: r.interpretation.level,
+                            signal: r.interpretation.market_signal,
+                            strength: r.interpretation.signal_strength,
+                        }
+                        : null,
+                })),
+                spread: {
+                    min: validValues.length > 0 ? Math.min(...validValues).toFixed(2) : 'N/A',
+                    max: validValues.length > 0 ? Math.max(...validValues).toFixed(2) : 'N/A',
+                    range: validValues.length > 1
+                        ? (Math.max(...validValues) - Math.min(...validValues)).toFixed(2)
+                        : '0.00',
+                },
+            },
+            vvix_analysis: vvixData
+                ? {
+                    current_vvix: vvixData.value,
+                    source: vvixData.source,
+                    last_update: vvixData.last_update,
+                    change_pct: vvixData.change_pct,
+                }
+                : null,
+            intelligent_volatility_analysis: interpretation
+                ? {
+                    // Niveaux et sentiment
+                    vix_level: interpretation.level,
+                    sentiment: interpretation.sentiment,
+                    interpretation_text: interpretation.interpretation,
+                    // Calculs de volatilité attendue
+                    expected_movements: {
+                        monthly_volatility: interpretation.expected_monthly_volatility ?? 0,
+                        weekly_volatility: interpretation.expected_weekly_volatility ?? 0,
+                        daily_move_range: interpretation.expected_daily_move_range ?? 0,
+                        es_monthly_move: `±${(interpretation.expected_monthly_volatility ?? 0).toFixed(1)}%`,
+                        es_weekly_move: `±${(interpretation.expected_weekly_volatility ?? 0).toFixed(1)}%`,
+                        es_daily_move: `±${(interpretation.expected_daily_move_range ?? 0).toFixed(1)}%`,
+                    },
+                    // Alertes et signaux
+                    alerts: interpretation.alerts,
+                    market_signal: interpretation.market_signal,
+                    signal_strength: interpretation.signal_strength,
+                    // Analyse combinée VIX/VVIX
+                    combined_analysis: this.createCombinedVixVvixAnalysis(consensusValue, vvixData?.value ?? null),
+                    // Catalyseurs de marché
+                    market_catalysts: this.extractMarketCatalysts(vixResults),
+                }
+                : null,
+            expert_summary: this.createExpertSummary(consensusValue, vvixData?.value ?? null, interpretation),
+            key_insights: this.createKeyInsights(consensusValue, vvixData?.value ?? null, interpretation, vixResults),
+            trading_recommendations: this.createTradingRecommendations(consensusValue, vvixData?.value ?? null, interpretation),
+            risk_assessment: this.createRiskAssessment(consensusValue, vvixData?.value ?? null, interpretation),
+            historical_context: this.createHistoricalContext(consensusValue, interpretation),
+        };
+    }
+    /**
+     * Crée une analyse combinée VIX/VVIX selon les principes
+     */
+    createCombinedVixVvixAnalysis(vixValue, vvixValue) {
+        if (!vvixValue) {
+            return {
+                status: 'VIX_ONLY',
+                message: 'Analyse VIX sans VVIX disponible',
+                reliability: 'MEDIUM',
+            };
+        }
+        const ratio = vvixValue / vixValue;
+        // Application des principes VIX/VVIX
+        if (vixValue > 20 && vvixValue > 120) {
+            return {
+                status: 'CRITICAL_BEARISH',
+                message: 'VIX > 20 ET VVIX > 120 : Signal baissier critique détecté',
+                expected_move: 'GROSSE BAISSE IMMINENTE',
+                timeframe: '24-72h',
+                probability: 'HIGH',
+                action: 'SELL/SHORT',
+                reliability: 'HIGH',
+            };
+        }
+        if (vixValue > 20 && vvixValue < 100) {
+            return {
+                status: 'PANIC_NOT_CREDIBLE',
+                message: 'VIX > 20 MAIS VVIX < 100 : Panique non crédible',
+                expected_move: 'REBOND HAUSSIER PROBABLE',
+                timeframe: '1-3 jours',
+                probability: 'MEDIUM-HIGH',
+                action: 'BUY_DIP',
+                reliability: 'HIGH',
+            };
+        }
+        if (vixValue <= 17 && vvixValue > 110) {
+            return {
+                status: 'VOLATILITY_IMMINENT',
+                message: 'VIX BAS (<17) MAIS VVIX ÉLEVÉ (>110) : Gros mouvement attendu',
+                expected_move: 'MOUVEMENT IMPORTANT DANS 24-72h',
+                timeframe: '24-72h',
+                probability: 'HIGH',
+                action: 'PREPARE_VOLATILITY',
+                reliability: 'HIGH',
+            };
+        }
+        if (vvixValue > 130) {
+            return {
+                status: 'EXTREME_DANGER',
+                message: 'VVIX > 130 : Danger imminent de forte volatilité',
+                expected_move: 'FORTe VOLATILITÉ OU CHUTE',
+                timeframe: 'IMMEDIAT',
+                probability: 'VERY_HIGH',
+                action: 'REDUCE_RISK',
+                reliability: 'VERY_HIGH',
+            };
+        }
+        if (vvixValue < 85) {
+            return {
+                status: 'CALM_MARKET',
+                message: 'VVIX < 85 : Marché calme et stable',
+                expected_move: 'FAIBLE PROBABILITÉ DE GROS MOUVEMENT',
+                timeframe: 'STABLE',
+                probability: 'LOW',
+                action: 'NORMAL_TRADING',
+                reliability: 'HIGH',
+            };
+        }
+        return {
+            status: 'NEUTRAL',
+            message: `VIX=${vixValue.toFixed(1)}, VVIX=${vvixValue.toFixed(1)}, Ratio=${ratio.toFixed(1)}`,
+            expected_move: 'CONDITIONS NORMALES',
+            timeframe: 'INTRADAY',
+            probability: 'MEDIUM',
+            action: 'HOLD',
+            reliability: 'MEDIUM',
+        };
+    }
+    /**
+     * Extrait les catalyseurs de marché des news
+     */
+    extractMarketCatalysts(vixResults) {
+        const headlines = vixResults.flatMap(r => r.news_headlines.map(n => n.title));
+        const catalysts = [];
+        const keywords = {
+            geopolitical: ['war', 'conflict', 'tension', 'sanctions', 'israel', 'ukraine', 'russie'],
+            economic: ['inflation', 'fed', 'rate', 'employment', 'gdp', 'recession'],
+            market: ['crash', 'crisis', 'spike', 'plunge', 'surge', 'correction'],
+            earnings: ['earnings', 'revenue', 'profit', 'guidance', 'forecast'],
+        };
+        headlines.forEach(headline => {
+            const lower = headline.toLowerCase();
+            for (const [category, words] of Object.entries(keywords)) {
+                if (words.some(word => lower.includes(word))) {
+                    const catalyst = `${category.toUpperCase()}: ${headline.substring(0, 60)}...`;
+                    if (!catalysts.includes(catalyst) && catalysts.length < 5) {
+                        catalysts.push(catalyst);
+                    }
+                }
+            }
+        });
+        return catalysts;
+    }
+    /**
+     * Crée le résumé expert
+     */
+    createExpertSummary(vixValue, vvixValue, interpretation) {
+        let summary = `Analyse VIX/VVIX complète: VIX actuel à ${vixValue.toFixed(2)}`;
+        if (vvixValue) {
+            summary += `, VVIX à ${vvixValue.toFixed(2)}`;
+        }
+        if (interpretation) {
+            summary += `. Niveau: ${interpretation.level}, Signal: ${interpretation.market_signal.replace('_', ' ')} avec force ${interpretation.signal_strength}/100`;
+            if (interpretation.alerts.length > 0) {
+                const criticalAlerts = interpretation.alerts.filter(a => a.type === 'CRITICAL');
+                if (criticalAlerts.length > 0) {
+                    summary += `. ⚠️ ${criticalAlerts.length} alerte(s) critique(s) détectée(s)`;
+                }
+            }
+        }
+        return summary;
+    }
+    /**
+     * Crée les insights clés
+     */
+    createKeyInsights(vixValue, vvixValue, interpretation, vixResults) {
+        const insights = [];
+        // Insight sur le niveau VIX
+        if (vixValue < 12) {
+            insights.push('🔵 VIX extrêmement bas (<12) : Marché euphorique, faible volatilité attendue');
+        }
+        else if (vixValue <= 15) {
+            insights.push('🟢 VIX bas (12-15) : Climat de confiance, volatilité faible à modérée');
+        }
+        else if (vixValue <= 20) {
+            insights.push('🟡 VIX normal (15-20) : Conditions de marché équilibrées');
+        }
+        else if (vixValue <= 25) {
+            insights.push('🟠 VIX nerveux (20-25) : Marché agité mais peut être haussier');
+        }
+        else {
+            insights.push('🔴 VIX élevé (>25) : Forte nervosité, volatilité importante attendue');
+        }
+        // Insight sur VVIX
+        if (vvixValue) {
+            const ratio = vvixValue / vixValue;
+            insights.push(`📊 Ratio VVIX/VIX: ${ratio.toFixed(1)} - ${ratio > 5 ? 'Élevé' : ratio < 3 ? 'Faible' : 'Normal'}`);
+            if (vvixValue > 130) {
+                insights.push('🚨 VVIX critique (>130) : Danger imminent de forte volatilité');
+            }
+            else if (vvixValue > 110) {
+                insights.push('⚠️ VVIX élevé (>110) : Volatilité importante attendue');
+            }
+            else if (vvixValue < 85) {
+                insights.push('😌 VVIX faible (<85) : Marché calme et prévisible');
+            }
+        }
+        // Insight sur les sources
+        const workingSources = vixResults.filter(r => r.value !== null).length;
+        insights.push(`📡 Sources fiables: ${workingSources}/${vixResults.length} (${Math.round((workingSources / vixResults.length) * 100)}%)`);
+        return insights.slice(0, 6); // Limiter à 6 insights maximum
+    }
+    /**
+     * Crée les recommandations de trading
+     */
+    createTradingRecommendations(vixValue, vvixValue, interpretation) {
+        let strategy = 'NEUTRAL';
+        let entrySignals = [];
+        let riskManagement = 'Gestion normale du risque';
+        if (interpretation) {
+            switch (interpretation.market_signal) {
+                case 'STRONG_BUY':
+                    strategy = 'AGGRESSIVE_BUY';
+                    entrySignals = [
+                        "VIX faible - Opportunité d'achat",
+                        'VVIX stable - Faible volatilité',
+                        'Biais haussier confirmé',
+                    ];
+                    riskManagement = 'Stop loss serré, taille de position augmentée';
+                    break;
+                case 'BUY':
+                    strategy = 'MODERATE_BUY';
+                    entrySignals = ['VIX modéré - Accumulation progressive', 'Biais haussier modéré'];
+                    riskManagement = 'Stop loss standard, diversification';
+                    break;
+                case 'HOLD':
+                    strategy = 'NEUTRAL';
+                    entrySignals = ['VIX neutre - Attendre confirmation', 'Pas de signal clair'];
+                    riskManagement = 'Gestion conservatrice, taille réduite';
+                    break;
+                case 'SELL':
+                    strategy = 'MODERATE_SELL';
+                    entrySignals = ['VIX élevé - Prise de profits', 'Augmentation de la nervosité'];
+                    riskManagement = 'Stop loss large, réduction exposition';
+                    break;
+                case 'STRONG_SELL':
+                    strategy = 'AGGRESSIVE_SELL';
+                    entrySignals = ['VIX très élevé - Sortie rapide', 'VVIX critique - Danger imminent'];
+                    riskManagement = 'Position de protection uniquement, taille minimale';
+                    break;
+                case 'CAUTION':
+                    strategy = 'CAUTION';
+                    entrySignals = ['VIX très bas - Risque de rebond', 'Conditions extrêmes'];
+                    riskManagement = 'Position très réduite, stop loss large';
+                    break;
+            }
+        }
+        // Ajustements basés sur VVIX
+        if (vvixValue && vvixValue > 130) {
+            entrySignals.push('VVIX critique - Volatilité extrême attendue');
+            riskManagement = 'Réduction maximale du risque, position de protection';
+        }
+        if (vvixValue && vvixValue < 85) {
+            entrySignals.push('VVIX faible - Conditions de marché calmes');
+            riskManagement = 'Trading normal avec gestion standard';
+        }
+        return {
+            strategy,
+            entry_signals: entrySignals,
+            risk_management: riskManagement,
+            target_vix_levels: {
+                support: vixValue > 20 ? 20 : 15,
+                resistance: vixValue < 25 ? 25 : 30,
+                extreme_high: vixValue > 30 ? vixValue + 5 : 35,
+                extreme_low: vixValue < 12 ? vixValue - 2 : 10,
+            },
+            time_horizon: vixValue > 25 ? 'SHORT_TERM' : 'MEDIUM_TERM',
+            volatility_adjustment: interpretation ? interpretation.market_signal : 'NEUTRAL',
+        };
+    }
+    /**
+     * Crée l'évaluation des risques
+     */
+    createRiskAssessment(vixValue, vvixValue, interpretation) {
+        let overallRisk = 'MEDIUM';
+        let volatilityRisk = 'MODERATE';
+        let directionalRisk = 'NEUTRAL';
+        // Évaluation basée sur VIX
+        if (vixValue > 30) {
+            overallRisk = 'VERY_HIGH';
+            volatilityRisk = 'EXTREME';
+            directionalRisk = 'HIGHLY_VOLATILE';
+        }
+        else if (vixValue > 25) {
+            overallRisk = 'HIGH';
+            volatilityRisk = 'ELEVATED';
+            directionalRisk = 'VOLATILE';
+        }
+        else if (vixValue > 20) {
+            overallRisk = 'MEDIUM-HIGH';
+            volatilityRisk = 'MODERATE-HIGH';
+            directionalRisk = 'NERVOUS';
+        }
+        else if (vixValue > 15) {
+            overallRisk = 'MEDIUM';
+            volatilityRisk = 'MODERATE';
+            directionalRisk = 'NORMAL';
+        }
+        else if (vixValue > 12) {
+            overallRisk = 'MEDIUM-LOW';
+            volatilityRisk = 'LOW-MODERATE';
+            directionalRisk = 'CALM';
+        }
+        else {
+            overallRisk = 'LOW';
+            volatilityRisk = 'LOW';
+            directionalRisk = 'VERY_CALM';
+        }
+        // Ajustements basés sur VVIX
+        if (vvixValue) {
+            if (vvixValue > 130) {
+                overallRisk = 'VERY_HIGH';
+                volatilityRisk = 'EXTREME_DANGER';
+            }
+            else if (vvixValue > 110) {
+                overallRisk = 'HIGH';
+                volatilityRisk = 'HIGH_VOLATILITY';
+            }
+            else if (vvixValue < 85) {
+                overallRisk =
+                    overallRisk === 'VERY_HIGH'
+                        ? 'HIGH'
+                        : overallRisk === 'HIGH'
+                            ? 'MEDIUM-HIGH'
+                            : overallRisk === 'LOW'
+                                ? 'VERY_LOW'
+                                : 'LOW-VERY_LOW';
+            }
+        }
+        return {
+            overall_risk_level: overallRisk,
+            volatility_risk: volatilityRisk,
+            directional_risk: directionalRisk,
+            confidence_level: interpretation ? interpretation.signal_strength : 50,
+            risk_factors: this.identifyRiskFactors(vixValue, vvixValue),
+            recommended_position_sizing: this.calculatePositionSizing(overallRisk),
+            stop_loss_recommendations: this.calculateStopLossRecommendations(vixValue, volatilityRisk),
+        };
+    }
+    /**
+     * Identifie les facteurs de risque
+     */
+    identifyRiskFactors(vixValue, vvixValue) {
+        const factors = [];
+        if (vixValue > 30)
+            factors.push('VIX en zone de crise (>30)');
+        if (vixValue > 25)
+            factors.push('VIX élevé - forte nervosité');
+        if (vixValue < 12)
+            factors.push('VIX très bas - risque de rebond violent');
+        if (vvixValue) {
+            if (vvixValue > 130)
+                factors.push('VVIX critique - volatilité extrême imminente');
+            if (vvixValue > 110)
+                factors.push('VVIX élevé - volatilité importante attendue');
+            if (vvixValue < 85)
+                factors.push('VVIX faible - conditions de marché calmes');
+            const ratio = vvixValue / vixValue;
+            if (ratio > 5.5)
+                factors.push('Ratio VVIX/VIX très élevé');
+            if (ratio < 3)
+                factors.push('Ratio VVIX/VIX très faible');
+        }
+        return factors;
+    }
+    /**
+     * Calcule la taille de position recommandée
+     */
+    calculatePositionSizing(riskLevel) {
+        switch (riskLevel) {
+            case 'VERY_HIGH':
+                return '10-25% de la taille normale';
+            case 'HIGH':
+                return '25-50% de la taille normale';
+            case 'MEDIUM-HIGH':
+                return '50-75% de la taille normale';
+            case 'MEDIUM':
+                return '100% de la taille normale';
+            case 'MEDIUM-LOW':
+                return '100-125% de la taille normale';
+            case 'LOW':
+                return '125-150% de la taille normale';
+            case 'VERY_LOW':
+                return '150-200% de la taille normale';
+            default:
+                return '100% de la taille normale';
+        }
+    }
+    /**
+     * Calcule les recommandations de stop loss
+     */
+    calculateStopLossRecommendations(vixValue, volatilityRisk) {
+        let stopLossPercentage = '2%';
+        let stopLossType = 'TIGHT';
+        if (vixValue > 30) {
+            stopLossPercentage = '4-5%';
+            stopLossType = 'WIDE';
+        }
+        else if (vixValue > 25) {
+            stopLossPercentage = '3-4%';
+            stopLossType = 'MODERATE-WIDE';
+        }
+        else if (vixValue > 20) {
+            stopLossPercentage = '2.5-3%';
+            stopLossType = 'MODERATE';
+        }
+        else if (vixValue > 15) {
+            stopLossPercentage = '2%';
+            stopLossType = 'NORMAL';
+        }
+        else {
+            stopLossPercentage = '1.5-2%';
+            stopLossType = 'TIGHT';
+        }
+        return {
+            recommended_percentage: stopLossPercentage,
+            type: stopLossType,
+            reasoning: `Basé sur VIX=${vixValue.toFixed(1)} (${volatilityRisk} volatilité)`,
+            volatility_adjustment: volatilityRisk === 'EXTREME' ? 'Stop loss très large requis' : 'Ajustement standard',
+        };
+    }
+    /**
+     * Crée le contexte historique
+     */
+    createHistoricalContext(vixValue, interpretation) {
+        return {
+            current_vs_historical_mean: {
+                mean_20_year: 19.4,
+                current_difference: parseFloat((vixValue - 19.4).toFixed(2)),
+                percentile_rank: this.calculatePercentileRank(vixValue),
+            },
+            current_regime_analysis: interpretation
+                ? {
+                    regime: interpretation.level,
+                    expected_duration: this.getRegimeExpectedDuration(interpretation.level),
+                    typical_market_behavior: this.getTypicalMarketBehavior(interpretation.level),
+                }
+                : null,
+            volatility_cycle: {
+                current_phase: vixValue > 20 ? 'HIGH_VOLATILITY' : 'LOW_VOLATILITY',
+                cycle_duration: 'Variable (2-8 semaines typique)',
+                next_phase_expectation: vixValue > 25 ? 'RETREAT_TO_NORMAL' : 'POTENTIAL_SPIKE',
+            },
+        };
+    }
+    calculatePercentileRank(currentVix) {
+        // Simplification - en pratique, utiliserierait les données historiques
+        if (currentVix < 12)
+            return 10;
+        if (currentVix < 15)
+            return 25;
+        if (currentVix < 18)
+            return 40;
+        if (currentVix < 20)
+            return 50;
+        if (currentVix < 25)
+            return 70;
+        if (currentVix < 30)
+            return 85;
+        return 95;
+    }
+    getRegimeExpectedDuration(level) {
+        switch (level) {
+            case 'VERY_LOW':
+                return '1-3 semaines (rare)';
+            case 'LOW':
+                return '2-6 semaines';
+            case 'NORMAL':
+                return '1-4 semaines';
+            case 'NERVOUS':
+                return '1-2 semaines';
+            case 'HIGH':
+                return '3-7 jours';
+            case 'EXTREME':
+                return '1-3 jours (crise)';
+            default:
+                return 'Variable';
+        }
+    }
+    getTypicalMarketBehavior(level) {
+        switch (level) {
+            case 'VERY_LOW':
+                return 'Marché euphorique, tendances haussières prolongées';
+            case 'LOW':
+                return 'Confiance accrue, volatilité faible, trend établi';
+            case 'NORMAL':
+                return 'Conditions équilibrées, volatilité modérée';
+            case 'NERVOUS':
+                return 'Nervosité mais peut être haussier, corrections possibles';
+            case 'HIGH':
+                return 'Forte nervosité, mouvements rapides, risques élevés';
+            case 'EXTREME':
+                return 'Panique, ventes massives, conditions de crise';
+            default:
+                return 'Comportement de marché variable';
+        }
+    }
+    /**
+     * Sauvegarde l'analyse enrichie dans la base de données
+     */
+    async saveEnhancedAnalysisToDatabase(analysis) {
+        try {
+            const query = `
+        INSERT INTO vix_analysis (analysis_data, created_at, analysis_type)
+        VALUES ($1, NOW(), 'ENHANCED_VIX_VVIX')
+      `;
+            await this.pool.query(query, [JSON.stringify(analysis)]);
+            console.log(`[${this.agentName}] ✅ Enhanced VIX/VVIX analysis saved to database`);
+        }
+        catch (error) {
+            console.error(`[${this.agentName}] Error saving enhanced analysis to database:`, error);
         }
     }
     /**
@@ -119,7 +726,7 @@ class VixombreAgent extends BaseAgentSimple_1.BaseAgentSimple {
           last_update,
           created_at
         FROM vix_data
-        WHERE created_at >= NOW() - INTERVAL '2 hours'
+        WHERE created_at >= NOW() - INTERVAL '24 hours'
         ORDER BY created_at DESC
         LIMIT 10
       `;
@@ -143,7 +750,7 @@ class VixombreAgent extends BaseAgentSimple_1.BaseAgentSimple {
           created_at
         FROM market_data
         WHERE symbol = 'VIX'
-        AND created_at >= NOW() - INTERVAL '2 hours'
+        AND created_at >= NOW() - INTERVAL '24 hours'
         ORDER BY created_at DESC
         LIMIT 10
       `;
@@ -242,129 +849,6 @@ class VixombreAgent extends BaseAgentSimple_1.BaseAgentSimple {
         return result;
     }
     /**
-     * Fallback: Scraper les données si la base de données est vide
-     */
-    async performScrapingFallback() {
-        console.log(`[${this.agentName}] Using SCRAPING FALLBACK mode...`);
-        try {
-            // 1. Scrape Data
-            const scrapeResults = await this.scraper.scrapeAll();
-            const successCount = scrapeResults.filter((r) => !r.error && r.value !== null).length;
-            const failedSources = scrapeResults
-                .filter((r) => r.error || r.value === null)
-                .map((r) => `${r.source} (${r.error || 'No data'})`);
-            console.log(`[${this.agentName}] Scraped ${successCount} sources successfully.`);
-            // 2. Save to Database
-            await this.scraper.saveToDatabase(this.pool, scrapeResults);
-            // 2. Prepare Data for AI
-            const prompt = this.createAnalysisPrompt(scrapeResults);
-            // 3. Analyze with KiloCode
-            let aiAnalysis = await this.tryKiloCodeWithFile(prompt);
-            // Fallback if AI failed
-            if (!aiAnalysis) {
-                console.log(`[${this.agentName}] AI Analysis failed, generating fallback stats...`);
-                const validValues = scrapeResults
-                    .filter((r) => r.value !== null)
-                    .map((r) => r.value);
-                const avg = validValues.length > 0
-                    ? validValues.reduce((a, b) => a + b, 0) / validValues.length
-                    : 0;
-                const validChanges = scrapeResults
-                    .filter((r) => r.change_pct !== null)
-                    .map((r) => r.change_pct);
-                const avgChange = validChanges.length > 0
-                    ? validChanges.reduce((a, b) => a + b, 0) / validChanges.length
-                    : 0;
-                // Calculate High/Low spread from available data
-                scrapeResults.flatMap((r) => r.news_headlines);
-                aiAnalysis = {
-                    volatility_analysis: {
-                        current_vix: validValues.length > 0 ? parseFloat(avg.toFixed(2)) : 0,
-                        vix_trend: avgChange < 0 ? 'BEARISH' : 'BULLISH',
-                        volatility_regime: avg > 30 ? 'CRISIS' : avg > 20 ? 'ELEVATED' : 'NORMAL',
-                        sentiment: 'NEUTRAL',
-                        sentiment_score: 0,
-                        risk_level: avg > 20 ? 'HIGH' : 'MEDIUM',
-                        catalysts: ['Analyse IA indisponible', 'Données de marché uniquement'],
-                        expert_summary: "Analyse de secours automatisée. Le service d'IA n'était pas disponible pour fournir des informations détaillées.",
-                        key_insights: ['Données VIX récupérées avec succès', 'Analyse IA détaillée ignorée'],
-                        trading_recommendations: {
-                            strategy: 'NEUTRAL',
-                            target_vix_levels: [15, 25],
-                        },
-                    },
-                };
-            }
-            // 4. Récupérer données historiques VIX pour analyse de tendance
-            const historicalData = await this.getVixHistoricalData();
-            // 5. Construct Final JSON avec analyse experte
-            const expertAnalysis = aiAnalysis.volatility_analysis ||
-                {};
-            const finalResult = {
-                metadata: {
-                    analysis_timestamp: new Date().toISOString(),
-                    markets_status: this.determineMarketStatus(),
-                    sources_scraped: successCount,
-                    sources_failed: failedSources,
-                    analysis_type: 'EXPERT_VOLATILITY_ANALYSIS',
-                },
-                current_vix_data: {
-                    consensus_value: expertAnalysis.current_vix || this.getConsensusValue(scrapeResults),
-                    trend: expertAnalysis.vix_trend || 'NEUTRAL',
-                    sources: scrapeResults.map((r) => {
-                        return Object.fromEntries(Object.entries({
-                            source: r.source,
-                            value: r.value,
-                            change_abs: r.change_abs,
-                            change_pct: r.change_pct,
-                            previous_close: r.previous_close,
-                            open: r.open,
-                            high: r.high,
-                            low: r.low,
-                            last_update: r.last_update,
-                        }).filter(([, v]) => v !== null));
-                    }),
-                },
-                expert_volatility_analysis: {
-                    current_vix: expertAnalysis.current_vix,
-                    vix_trend: expertAnalysis.vix_trend,
-                    volatility_regime: expertAnalysis.volatility_regime,
-                    sentiment: expertAnalysis.sentiment,
-                    sentiment_score: expertAnalysis.sentiment_score,
-                    risk_level: expertAnalysis.risk_level,
-                    catalysts: expertAnalysis.catalysts || [],
-                    technical_signals: expertAnalysis.technical_signals || {},
-                    market_implications: expertAnalysis.market_implications || {},
-                    expert_summary: expertAnalysis.expert_summary,
-                    key_insights: expertAnalysis.key_insights || [],
-                    trading_recommendations: expertAnalysis.trading_recommendations || {},
-                },
-                historical_context: {
-                    comparison_5day: historicalData.five_day_avg,
-                    comparison_20day: historicalData.twenty_day_avg,
-                    volatility_trend: this.calculateVolatilityTrend(historicalData),
-                    key_levels: {
-                        support: historicalData.support_level,
-                        resistance: historicalData.resistance_level,
-                    },
-                },
-                news_analysis: {
-                    total_headlines: scrapeResults.reduce((sum, r) => sum + r.news_headlines.length, 0),
-                    key_themes: this.extractNewsThemes(scrapeResults),
-                    volatility_catalysts: this.identifyVolatilityCatalysts(scrapeResults),
-                },
-            };
-            await this.saveAnalysisToDatabase(finalResult);
-            return finalResult;
-        }
-        catch (error) {
-            console.error(`[${this.agentName}] Analysis failed:`, error);
-            return {
-                error: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            };
-        }
-    }
-    /**
      * Détermine le statut du marché
      */
     determineMarketStatus() {
@@ -393,6 +877,46 @@ class VixombreAgent extends BaseAgentSimple_1.BaseAgentSimple {
         }
         catch (error) {
             console.error(`[${this.agentName}] Error saving analysis to database:`, error);
+        }
+    }
+    /**
+     * Nouvelle méthode principale VIX/VVIX avec sortie markdown
+     */
+    async analyzeVixStructure() {
+        console.log(`[${this.agentName}] 🚀 Starting VIX Database Analysis with markdown output...`);
+        try {
+            // 1. Tester la connexion à la base de données
+            const dbConnected = await this.testDatabaseConnection();
+            if (!dbConnected) {
+                console.log(`[${this.agentName}] Database not connected - cannot proceed`);
+                return { error: 'Database not connected.' };
+            }
+            console.log(`[${this.agentName}] Using DATABASE-FIRST mode for VIX/VVIX analysis...`);
+            // 2. Récupérer les données VIX récentes
+            const vixData = await this.getVixDataFromDatabase();
+            if (!vixData || vixData.length === 0) {
+                console.log(`[${this.agentName}] No VIX data in database - cannot proceed`);
+                return { error: 'No VIX data found in database. Please run ingestion pipeline.' };
+            }
+            console.log(`[${this.agentName}] Found ${vixData.length} VIX records in DATABASE`);
+            // 3. Récupérer les données VVIX récentes
+            const vvixData = await this.getVvixDataFromDatabase();
+            if (vvixData && vvixData.length > 0) {
+                console.log(`[${this.agentName}] Found ${vvixData.length} VVIX records in DATABASE`);
+            }
+            // 4. Créer l'analyse VIX/VVIX intelligente
+            const analysis = this.createVixVvixAnalysis(vixData, vvixData);
+            // 5. Sauvegarder l'analyse en base de données
+            await this.saveAnalysisToDatabase(analysis);
+            // 6. Sauvegarder l'analyse en fichier markdown
+            await this.saveVixAnalysisToMarkdown(analysis);
+            return analysis;
+        }
+        catch (error) {
+            console.error(`[${this.agentName}] VIX/VVIX analysis failed:`, error);
+            return {
+                error: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            };
         }
     }
     createAnalysisPrompt(results) {
@@ -591,12 +1115,13 @@ Analyze the data above and return ONLY the requested JSON.
                         }
                     }
                     // Vérifier s'il y a des métadonnées
-                    if (event.metadata && (event.metadata.volatility_analysis || event.metadata.current_vix)) {
+                    if (event.metadata &&
+                        (event.metadata.volatility_analysis || event.metadata.current_vix)) {
                         console.log(`[${this.agentName}] ✅ JSON trouvé dans metadata`);
                         return this.validateAndCleanVixJson(event.metadata);
                     }
                 }
-                catch (parseError) {
+                catch {
                     // Ignorer les erreurs de parsing ligne par ligne
                     continue;
                 }
@@ -802,33 +1327,33 @@ Analyze the data above and return ONLY the requested JSON.
                     volatility_trend: 'Indisponible',
                     pattern_recognition: 'Pas de pattern détecté',
                     gap_analysis: 'NONE',
-                    intraday_range_analysis: 'STABLE'
+                    intraday_range_analysis: 'STABLE',
                 },
                 market_implications: {
                     es_futures_bias: 'NEUTRAL',
                     volatility_expectation: 'STABLE',
                     confidence_level: 0,
-                    time_horizon: 'INTRADAY'
+                    time_horizon: 'INTRADAY',
                 },
                 expert_summary: 'Analyse VIX de secours - service IA temporairement indisponible. Veuillez réessayer ultérieurement.',
                 key_insights: [
-                    'Service d\'analyse IA temporairement indisponible',
+                    "Service d'analyse IA temporairement indisponible",
                     'Données VIX en cours de collecte',
-                    'Veuillez consulter les sources directes pour les dernières valeurs'
+                    'Veuillez consulter les sources directes pour les dernières valeurs',
                 ],
                 trading_recommendations: {
                     strategy: 'NEUTRAL',
                     entry_signals: ['Attendre confirmation IA'],
-                    risk_management: 'Gestion prudente en attendant l\'analyse complète',
-                    target_vix_levels: [15, 20, 25]
-                }
+                    risk_management: "Gestion prudente en attendant l'analyse complète",
+                    target_vix_levels: [15, 20, 25],
+                },
             },
             metadata: {
                 analysis_type: 'FALLBACK_ANALYSIS',
                 error_reason: 'KiloCode parsing failed',
                 fallback_used: true,
-                timestamp: new Date().toISOString()
-            }
+                timestamp: new Date().toISOString(),
+            },
         };
     }
     /**

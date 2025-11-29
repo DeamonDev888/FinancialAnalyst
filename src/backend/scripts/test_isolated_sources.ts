@@ -12,8 +12,8 @@ async function testIsolatedSources() {
       '--disable-blink-features=AutomationControlled',
       '--disable-extensions',
       '--no-first-run',
-      '--disable-default-apps'
-    ]
+      '--disable-default-apps',
+    ],
   });
 
   try {
@@ -22,16 +22,17 @@ async function testIsolatedSources() {
     console.log('='.repeat(50));
 
     const yahooContext = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      userAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
       viewport: { width: 1920, height: 1080 },
       extraHTTPHeaders: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
         'Accept-Encoding': 'gzip, deflate, br',
-        'DNT': '1',
-        'Connection': 'keep-alive',
+        DNT: '1',
+        Connection: 'keep-alive',
         'Upgrade-Insecure-Requests': '1',
-      }
+      },
     });
 
     const yahooPage = await yahooContext.newPage();
@@ -49,7 +50,7 @@ async function testIsolatedSources() {
 
       const response = await yahooPage.goto('https://finance.yahoo.com/quote/%5EVIX', {
         waitUntil: 'domcontentloaded',
-        timeout: 15000
+        timeout: 15000,
       });
 
       console.log(`   Status: ${response?.status()}`);
@@ -79,7 +80,7 @@ async function testIsolatedSources() {
           console.log('3. Rechargement direct...');
           await yahooPage.goto('https://finance.yahoo.com/quote/%5EVIX', {
             waitUntil: 'domcontentloaded',
-            timeout: 10000
+            timeout: 10000,
           });
         }
       }
@@ -90,7 +91,7 @@ async function testIsolatedSources() {
         const selectors = [
           'fin-streamer[data-field="regularMarketPrice"][data-symbol="^VIX"]',
           '[data-testid="qsp-price"]',
-          'fin-streamer[data-field="regularMarketPrice"]'
+          'fin-streamer[data-field="regularMarketPrice"]',
         ];
 
         for (const selector of selectors) {
@@ -104,7 +105,6 @@ async function testIsolatedSources() {
 
       console.log(`   VIX Value: ${value || 'NON TROUVÉ'}`);
       console.log(`   Succès: ${value ? '✅' : '❌'}`);
-
     } catch (error) {
       console.error(`   ❌ Erreur Yahoo: ${error}`);
     } finally {
@@ -115,16 +115,17 @@ async function testIsolatedSources() {
     console.log('='.repeat(50));
 
     const mwContext = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      userAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
       viewport: { width: 1920, height: 1080 },
       extraHTTPHeaders: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
         'Accept-Encoding': 'gzip, deflate, br',
-        'DNT': '1',
-        'Connection': 'keep-alive',
+        DNT: '1',
+        Connection: 'keep-alive',
         'Upgrade-Insecure-Requests': '1',
-      }
+      },
     });
 
     const mwPage = await mwContext.newPage();
@@ -142,7 +143,7 @@ async function testIsolatedSources() {
 
       const response = await mwPage.goto('https://www.marketwatch.com/investing/index/vix', {
         waitUntil: 'domcontentloaded',
-        timeout: 15000
+        timeout: 15000,
       });
 
       console.log(`   Status: ${response?.status()}`);
@@ -155,12 +156,7 @@ async function testIsolatedSources() {
       // Extraction simple
       console.log('2. Extraction VIX...');
       const value = await mwPage.evaluate(() => {
-        const selectors = [
-          '.intraday__price .value',
-          '.value',
-          '.price',
-          '[data-test*="price"]'
-        ];
+        const selectors = ['.intraday__price .value', '.value', '.price', '[data-test*="price"]'];
 
         for (const selector of selectors) {
           const element = document.querySelector(selector);
@@ -180,15 +176,16 @@ async function testIsolatedSources() {
       // Vérifier les blocages
       const blocked = await mwPage.evaluate(() => {
         const bodyText = document.body.innerText.toLowerCase();
-        return bodyText.includes('blocked') ||
-               bodyText.includes('access denied') ||
-               bodyText.includes('captcha') ||
-               bodyText.includes('robot check') ||
-               bodyText.includes('cloudflare');
+        return (
+          bodyText.includes('blocked') ||
+          bodyText.includes('access denied') ||
+          bodyText.includes('captcha') ||
+          bodyText.includes('robot check') ||
+          bodyText.includes('cloudflare')
+        );
       });
 
       console.log(`   Blocage: ${blocked ? '✅ DÉTECTÉ' : '❌ NON'}`);
-
     } catch (error) {
       console.error(`   ❌ Erreur MarketWatch: ${error}`);
     } finally {
@@ -198,7 +195,6 @@ async function testIsolatedSources() {
     console.log('\n📊 RÉSUMÉ DES TESTS ISOLÉS');
     console.log('='.repeat(50));
     console.log('✅ Tests terminés');
-
   } catch (error) {
     console.error('Erreur globale:', error);
   } finally {
