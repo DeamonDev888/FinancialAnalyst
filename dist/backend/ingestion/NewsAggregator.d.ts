@@ -56,6 +56,18 @@ export declare class NewsAggregator {
      */
     saveNewsToDatabase(news: NewsItem[]): Promise<void>;
     fetchAndSaveAllNews(): Promise<number>;
+    /**
+     * Vérifie la connectivité de la base de données
+     */
+    private verifyDatabaseConnection;
+    /**
+     * Vérifie que toutes les sources sont accessibles
+     */
+    private verifySources;
+    /**
+     * Sauvegarde les news avec validation supplémentaire
+     */
+    private saveNewsToDatabaseWithValidation;
     close(): Promise<void>;
 }
 //# sourceMappingURL=NewsAggregator.d.ts.map

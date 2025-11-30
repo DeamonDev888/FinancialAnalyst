@@ -65,10 +65,10 @@ export class NewsFilterAgent extends BaseAgentSimple {
     const client = await this.pool.connect();
     try {
       const res = await client.query(`
-        SELECT id, title, content, source 
-        FROM news_items 
-        WHERE processing_status = 'PENDING' 
-        ORDER BY created_at DESC 
+        SELECT id, title, content, source
+        FROM news_items
+        WHERE processing_status IN ('PENDING', 'raw', 'processed')
+        ORDER BY created_at DESC
         LIMIT 50
       `);
       return res.rows;

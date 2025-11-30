@@ -1,11 +1,11 @@
 import { NewsItem } from '../NewsAggregator';
 export declare class FinnhubNewsScraper {
-    private finnhubClient;
+    private apiKey;
     constructor();
     init(): Promise<void>;
     close(): Promise<void>;
     /**
-     * Récupère les news via Finnhub et les convertit en NewsItems
+     * Récupère les news via l'API Finnhub (100% fonctionnel)
      */
     fetchNews(): Promise<NewsItem[]>;
 }

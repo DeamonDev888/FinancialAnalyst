@@ -23,8 +23,8 @@ export class ZeroHedgeNewsScraper {
      */
     async fetchNews() {
         try {
-            // Flux RSS officiel de ZeroHedge
-            const { data } = await axios.get('http://feeds.feedburner.com/zerohedge/feed', {
+            // Flux RSS officiel de ZeroHedge - mis à jour vers la nouvelle URL
+            const { data } = await axios.get('https://cms.zerohedge.com/fullrss2.xml', {
                 headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NovaQuoteAgent/1.0)' },
                 timeout: 5000,
             });
