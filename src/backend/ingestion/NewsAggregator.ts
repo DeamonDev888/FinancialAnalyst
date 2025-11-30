@@ -1,9 +1,12 @@
-import axios from 'axios';
-import * as cheerio from 'cheerio';
-import { FredClient } from './FredClient';
-import { FinnhubClient } from './FinnhubClient';
 import { TradingEconomicsScraper } from './TradingEconomicsScraper';
-import { NewsScraper } from './NewsScraper';
+import { ZeroHedgeNewsScraper } from './scrapers/ZeroHedgeNewsScraper';
+import { CNBCNewsScraper } from './scrapers/CNBCNewsScraper';
+import { FinancialJuiceNewsScraper } from './scrapers/FinancialJuiceNewsScraper';
+import { XFeedsNewsScraper } from './scrapers/XFeedsNewsScraper';
+import { FredNewsScraper } from './scrapers/FredNewsScraper';
+import { FinnhubNewsScraper } from './scrapers/FinnhubNewsScraper';
+import { CboeNewsScraper } from './scrapers/CboeNewsScraper';
+import { BlsNewsScraper } from './scrapers/BlsNewsScraper';
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
 
@@ -19,17 +22,27 @@ export interface NewsItem {
 }
 
 export class NewsAggregator {
-  private fredClient: FredClient;
-  private finnhubClient: FinnhubClient;
   private teScraper: TradingEconomicsScraper;
-  private newsScraper: NewsScraper;
+  private zeroHedgeScraper: ZeroHedgeNewsScraper;
+  private cnbcScraper: CNBCNewsScraper;
+  private financialJuiceScraper: FinancialJuiceNewsScraper;
+  private xFeedsScraper: XFeedsNewsScraper;
+  private fredScraper: FredNewsScraper;
+  private finnhubScraper: FinnhubNewsScraper;
+  private cboeScraper: CboeNewsScraper;
+  private blsScraper: BlsNewsScraper;
   private pool: Pool;
 
   constructor() {
-    this.fredClient = new FredClient();
-    this.finnhubClient = new FinnhubClient();
     this.teScraper = new TradingEconomicsScraper();
-    this.newsScraper = new NewsScraper();
+    this.zeroHedgeScraper = new ZeroHedgeNewsScraper();
+    this.cnbcScraper = new CNBCNewsScraper();
+    this.financialJuiceScraper = new FinancialJuiceNewsScraper();
+    this.xFeedsScraper = new XFeedsNewsScraper();
+    this.fredScraper = new FredNewsScraper();
+    this.finnhubScraper = new FinnhubNewsScraper();
+    this.cboeScraper = new CboeNewsScraper();
+    this.blsScraper = new BlsNewsScraper();
     this.pool = new Pool({
       host: process.env.DB_HOST || 'localhost',
       port: parseInt(process.env.DB_PORT || '5432'),
@@ -39,213 +52,68 @@ export class NewsAggregator {
     });
   }
 
-  /**
-   * Scrapes the full content of an article from its URL.
-   */
-  /**
-   * Scrapes the full content of an article from its URL using Playwright.
-   */
-  private async scrapeArticleContent(url: string): Promise<string> {
-    return this.newsScraper.scrapeArticle(url);
-  }
 
   /**
-   * Récupère les news via RSS pour ZeroHedge (Beaucoup plus fiable que le scraping HTML)
+   * Récupère les news via RSS pour ZeroHedge
    */
   async fetchZeroHedgeHeadlines(): Promise<NewsItem[]> {
+    await this.zeroHedgeScraper.init();
     try {
-      // Flux RSS officiel de ZeroHedge
-      const { data } = await axios.get('http://feeds.feedburner.com/zerohedge/feed', {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NovaQuoteAgent/1.0)' },
-        timeout: 5000,
-      });
-
-      const $ = cheerio.load(data, { xmlMode: true });
-      
-      // Get top 5 items to scrape content for (to avoid timeouts)
-      const items = $('item').toArray().slice(0, 5);
-      
-      const newsPromises = items.map(async (el): Promise<NewsItem | null> => {
-        const title = $(el).find('title').text().trim();
-        const link = $(el).find('link').text().trim();
-        const pubDate = $(el).find('pubDate').text();
-        const description = $(el).find('description').text().trim();
-
-        if (title && link) {
-          // Fetch full content
-          let content = await this.scrapeArticleContent(link);
-          
-          // Fallback to description if scraping failed or returned little content
-          if (!content || content.length < 50) {
-            content = description;
-          }
-
-          return {
-            title,
-            source: 'ZeroHedge',
-            url: link,
-            timestamp: new Date(pubDate),
-            content: content || title // Ensure we have something
-          };
-        }
-        return null;
-      });
-
-      const results = await Promise.all(newsPromises);
-      return results.filter((n): n is NewsItem => n !== null);
-    } catch (error) {
-      console.error(
-        'Error fetching ZeroHedge RSS:',
-        error instanceof Error ? error.message : error
-      );
-      return [];
+      return await this.zeroHedgeScraper.fetchNews();
+    } finally {
+      await this.zeroHedgeScraper.close();
     }
   }
 
   /**
    * Récupère les news de CNBC (US Markets) via RSS
-   * Plus pertinent pour le S&P 500 (ES Futures) que ZoneBourse.
    */
   async fetchCNBCMarketNews(): Promise<NewsItem[]> {
+    await this.cnbcScraper.init();
     try {
-      // Flux RSS CNBC Finance
-      const { data } = await axios.get(
-        'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664',
-        {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NovaQuoteAgent/1.0)' },
-          timeout: 5000,
-        }
-      );
-
-      const $ = cheerio.load(data, { xmlMode: true });
-      
-      // Get top 5 items
-      const items = $('item').toArray().slice(0, 5);
-
-      const newsPromises = items.map(async (el): Promise<NewsItem | null> => {
-        const title = $(el).find('title').text().trim();
-        const link = $(el).find('link').text().trim();
-        const pubDate = $(el).find('pubDate').text();
-        const description = $(el).find('description').text().trim();
-
-        if (title && link) {
-          let content = await this.scrapeArticleContent(link);
-          
-          if (!content || content.length < 50) {
-            content = description;
-          }
-
-          return {
-            title,
-            source: 'CNBC',
-            url: link,
-            timestamp: new Date(pubDate),
-            content: content || title
-          };
-        }
-        return null;
-      });
-
-      const results = await Promise.all(newsPromises);
-      return results.filter((n): n is NewsItem => n !== null);
-    } catch (error) {
-      console.error('Error fetching CNBC RSS:', error instanceof Error ? error.message : error);
-      return [];
+      return await this.cnbcScraper.fetchNews();
+    } finally {
+      await this.cnbcScraper.close();
     }
   }
 
   /**
    * Récupère les news de FinancialJuice via RSS
-   * URL: https://www.financialjuice.com/feed.ashx?xy=rss
    */
   async fetchFinancialJuice(): Promise<NewsItem[]> {
+    await this.financialJuiceScraper.init();
     try {
-      const { data } = await axios.get('https://www.financialjuice.com/feed.ashx?xy=rss', {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NovaQuoteAgent/1.0)' },
-        timeout: 5000,
-      });
-
-      const $ = cheerio.load(data, { xmlMode: true });
-      
-      // Get top 10 items for FinancialJuice (often shorter updates)
-      const items = $('item').toArray().slice(0, 10);
-
-      const newsPromises = items.map(async (el): Promise<NewsItem | null> => {
-        const title = $(el).find('title').text().trim();
-        const link = $(el).find('link').text().trim();
-        const pubDate = $(el).find('pubDate').text();
-        // FinancialJuice often puts the content in the title or description directly
-        const description = $(el).find('description').text().trim();
-
-        if (title && link) {
-          // FinancialJuice links often redirect or are just headlines. 
-          // We'll try to scrape but rely heavily on description.
-          let content = await this.scrapeArticleContent(link);
-          
-          if (!content || content.length < 20) {
-             content = description;
-          }
-
-          return {
-            title,
-            source: 'FinancialJuice',
-            url: link,
-            timestamp: new Date(pubDate),
-            content: content || title
-          };
-        }
-        return null;
-      });
-
-      const results = await Promise.all(newsPromises);
-      return results.filter((n): n is NewsItem => n !== null);
-    } catch (error) {
-      console.error(
-        'Error fetching FinancialJuice RSS:',
-        error instanceof Error ? error.message : error
-      );
-      return [];
+      return await this.financialJuiceScraper.fetchNews();
+    } finally {
+      await this.financialJuiceScraper.close();
     }
+  }
+
+  /**
+   * Récupère les news des feeds X via OPML
+   */
+  async fetchXFeedsFromOpml(): Promise<NewsItem[]> {
+    await this.xFeedsScraper.init();
+    try {
+      return await this.xFeedsScraper.fetchNews();
+    } finally {
+      await this.xFeedsScraper.close();
+    }
+  }
+
+
+  /**
+   * Récupère les news via Finnhub
+   */
+  async fetchFinnhubNews(): Promise<NewsItem[]> {
+    return await this.finnhubScraper.fetchNews();
   }
 
   /**
    * Récupère les indicateurs économiques via FRED
    */
   async fetchFredEconomicData(): Promise<NewsItem[]> {
-    try {
-      const indicators = await this.fredClient.fetchAllKeyIndicators();
-
-      return indicators.map(ind => ({
-        title: `[MACRO DATA] ${ind.title}: ${ind.value} (As of ${ind.date})`,
-        source: 'FRED',
-        // URL unique par date pour éviter la déduplication abusive si la valeur change
-        url: `https://fred.stlouisfed.org/series/${ind.id}?date=${ind.date}`,
-        timestamp: new Date(ind.date),
-        sentiment: 'neutral', // Le sentiment sera analysé par l'IA
-      }));
-    } catch (error) {
-      console.error('Error fetching FRED data:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Récupère les news via Finnhub
-   */
-  async fetchFinnhubNews(): Promise<NewsItem[]> {
-    try {
-      const news = await this.finnhubClient.fetchMarketNews();
-      return news.map(n => ({
-        title: n.headline,
-        source: 'Finnhub',
-        url: n.url,
-        timestamp: new Date(n.datetime * 1000), // Finnhub utilise des timestamps Unix
-        sentiment: 'neutral',
-      }));
-    } catch (error) {
-      console.error('Error fetching Finnhub news:', error);
-      return [];
-    }
+    return await this.fredScraper.fetchNews();
   }
 
   /**
@@ -275,72 +143,12 @@ export class NewsAggregator {
 
   /**
    * Récupère et sauvegarde les données de marché (ES Futures prioritaire)
+   * TODO: Refactoriser pour utiliser FinnhubClient directement
    */
   async fetchAndSaveMarketData(): Promise<void> {
-    try {
-      console.log('📈 Fetching market data (ES Futures priority)...');
-      const stockData = await this.finnhubClient.fetchSP500Data();
-
-      if (stockData) {
-        const client = await this.pool.connect();
-        try {
-          // Déterminer le type d'actif en fonction du symbole
-          let assetType = 'ETF';
-          let symbol = stockData.symbol;
-
-          if (
-            stockData.symbol.includes('ES_FUTURES') ||
-            stockData.symbol.includes('ES_CONVERTED') ||
-            stockData.symbol.includes('ES_FROM_')
-          ) {
-            assetType = 'FUTURES';
-            symbol = 'ES'; // Standardiser pour ES Futures
-          } else if (stockData.symbol === 'SPY') {
-            assetType = 'ETF';
-            symbol = 'SPY';
-          } else if (stockData.symbol === 'QQQ') {
-            assetType = 'ETF';
-            symbol = 'QQQ';
-          }
-
-          await client.query(
-            `INSERT INTO market_data
-             (symbol, asset_type, price, change, change_percent, high, low, open, previous_close, source, timestamp)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Finnhub', NOW())`,
-            [
-              symbol,
-              assetType,
-              stockData.current,
-              stockData.change,
-              stockData.percent_change,
-              stockData.high,
-              stockData.low,
-              stockData.open,
-              stockData.previous_close,
-            ]
-          );
-
-          // Log détaillé pour comprendre la source des données
-          const sourceInfo = stockData.symbol.includes('ES_FUTURES')
-            ? ' (Futures directs)'
-            : stockData.symbol.includes('ES_FROM_SPY')
-              ? ' (via SPY)'
-              : stockData.symbol.includes('ES_FROM_QQQ')
-                ? ' (via QQQ)'
-                : ' (ETF)';
-
-          console.log(
-            `✅ Market data saved for ${symbol}${sourceInfo}: ${stockData.current.toFixed(2)} (${stockData.change > 0 ? '+' : ''}${stockData.percent_change.toFixed(2)}%)`
-          );
-        } finally {
-          client.release();
-        }
-      } else {
-        console.warn('⚠️ No market data returned from Finnhub');
-      }
-    } catch (error) {
-      console.error('❌ Error fetching/saving market data:', error);
-    }
+    // Temporarily disabled during scraper unification
+    console.log('⚠️ Market data fetching temporarily disabled during scraper unification');
+    return;
   }
 
   /**
@@ -384,17 +192,30 @@ export class NewsAggregator {
                   OR length(EXCLUDED.content) > length(COALESCE(news_items.content, ''));
             `,
             [
-              item.title, 
-              item.source, 
-              item.url, 
+              item.title,
+              item.source,
+              item.url,
               item.content || null, // Ensure explicit null if undefined
-              item.sentiment, 
-              item.timestamp
+              item.sentiment,
+              item.timestamp,
             ]
           );
           savedCount++;
         } catch (e) {
           console.error(`Failed to save news from ${item.source}:`, e);
+          console.error(
+            'Item causing error:',
+            JSON.stringify(
+              {
+                title: item.title,
+                source: item.source,
+                timestamp: item.timestamp,
+                contentLength: item.content?.length,
+              },
+              null,
+              2
+            )
+          );
         }
       }
 
@@ -406,77 +227,92 @@ export class NewsAggregator {
     }
   }
 
-  /**
-   * Récupère et sauvegarde toutes les news
-   */
-  async fetchAndSaveAllNews(): Promise<NewsItem[]> {
-    console.log('📰 Starting comprehensive news aggregation...');
 
-    const allNews: NewsItem[] = [];
-
+  public async fetchAndSaveAllNews(): Promise<number> {
     try {
-      // Initialize the scraper (launches browser)
-      await this.newsScraper.init();
+      console.log('Starting news aggregation...');
 
-      // Récupérer toutes les sources en parallèle
-      const [zerohedge, cnbc, financialjuice, finnhub, fred, te] = await Promise.allSettled([
-        this.fetchZeroHedgeHeadlines(),
-        this.fetchCNBCMarketNews(),
-        this.fetchFinancialJuice(),
-        this.fetchFinnhubNews(),
-        this.fetchFredEconomicData(),
-        this.fetchFredEconomicData(),
-        this.fetchTradingEconomicsCalendar(),
-        this.fetchAndSaveMarketData(),
-      ]);
+      // Initialize the scrapers (launches browsers where needed)
+      await this.zeroHedgeScraper.init();
+      await this.cnbcScraper.init();
+      await this.financialJuiceScraper.init();
+      await this.xFeedsScraper.init();
+      await this.cboeScraper.init();
+      await this.blsScraper.init();
 
-      // Ajouter les résultats réussis
-      if (zerohedge.status === 'fulfilled') {
-        allNews.push(...zerohedge.value);
-        console.log(`✅ ZeroHedge: ${zerohedge.value.length} news`);
-      }
+      let totalNews = 0;
 
-      if (cnbc.status === 'fulfilled') {
-        allNews.push(...cnbc.value);
-        console.log(`✅ CNBC: ${cnbc.value.length} news`);
-      }
+      console.log('Fetching ZeroHedge...');
+      const zhNews = await this.zeroHedgeScraper.fetchNews();
+      await this.saveNewsToDatabase(zhNews);
+      totalNews += zhNews.length;
 
-      if (financialjuice.status === 'fulfilled') {
-        allNews.push(...financialjuice.value);
-        console.log(`✅ FinancialJuice: ${financialjuice.value.length} news`);
-      }
+      console.log('Fetching CNBC...');
+      const cnbcNews = await this.cnbcScraper.fetchNews();
+      await this.saveNewsToDatabase(cnbcNews);
+      totalNews += cnbcNews.length;
 
-      if (finnhub.status === 'fulfilled') {
-        allNews.push(...finnhub.value);
-        console.log(`✅ Finnhub: ${finnhub.value.length} news`);
-      }
+      console.log('Fetching FinancialJuice...');
+      const fjNews = await this.financialJuiceScraper.fetchNews();
+      await this.saveNewsToDatabase(fjNews);
+      totalNews += fjNews.length;
 
-      if (fred.status === 'fulfilled') {
-        allNews.push(...fred.value);
-        console.log(`✅ FRED: ${fred.value.length} indicators`);
-      }
+      console.log('Fetching X Feeds from OPML...');
+      const xNews = await this.xFeedsScraper.fetchNews();
+      await this.saveNewsToDatabase(xNews);
+      totalNews += xNews.length;
 
-      if (te.status === 'fulfilled') {
-        allNews.push(...te.value);
-        console.log(`✅ TradingEconomics: ${te.value.length} events`);
-      }
+      console.log('Fetching Finnhub...');
+      const finnhubNews = await this.finnhubScraper.fetchNews();
+      await this.saveNewsToDatabase(finnhubNews);
+      totalNews += finnhubNews.length;
 
-      // Sauvegarder toutes les news
-      await this.saveNewsToDatabase(allNews);
+      console.log('Fetching FRED Data...');
+      const fredData = await this.fredScraper.fetchNews();
+      await this.saveNewsToDatabase(fredData);
+      totalNews += fredData.length;
 
-      console.log(`🎉 News aggregation completed: ${allNews.length} total news saved`);
-      return allNews;
+      console.log('Fetching CBOE Data...');
+      const cboeData = await this.cboeScraper.fetchNews();
+      await this.saveNewsToDatabase(cboeData);
+      totalNews += cboeData.length;
+
+      console.log('Fetching BLS Data...');
+      const blsData = await this.blsScraper.fetchNews();
+      await this.saveNewsToDatabase(blsData);
+      totalNews += blsData.length;
+
+      console.log('Fetching Trading Economics...');
+      const teData = await this.fetchTradingEconomicsCalendar();
+      await this.saveNewsToDatabase(teData);
+      totalNews += teData.length;
+
+      console.log('Fetching Market Data...');
+      await this.fetchAndSaveMarketData();
+
+      console.log('News aggregation complete.');
+      return totalNews;
     } catch (error) {
-      console.error('❌ Error during news aggregation:', error);
-      return allNews;
+      console.error('Error in fetchAndSaveAllNews:', error);
+      return 0;
     } finally {
-      // Close the scraper (closes browser)
-      await this.close();
+      // Close the scrapers (closes browsers where applicable)
+      await this.zeroHedgeScraper.close();
+      await this.cnbcScraper.close();
+      await this.financialJuiceScraper.close();
+      await this.xFeedsScraper.close();
+      await this.cboeScraper.close();
+      await this.blsScraper.close();
     }
   }
 
   async close(): Promise<void> {
-    await this.newsScraper.close();
+    await this.zeroHedgeScraper.close();
+    await this.cnbcScraper.close();
+    await this.financialJuiceScraper.close();
+    await this.xFeedsScraper.close();
+    await this.cboeScraper.close();
+    await this.blsScraper.close();
     await this.pool.end();
   }
 }

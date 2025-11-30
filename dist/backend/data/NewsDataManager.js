@@ -1,46 +1,10 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.NewsDataManager = void 0;
-const NewsDataProcessor_1 = require("./NewsDataProcessor");
-const fs = __importStar(require("fs/promises"));
-const path = __importStar(require("path"));
-class NewsDataManager {
+import { NewsDataProcessor } from './NewsDataProcessor';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+export class NewsDataManager {
     processor;
     constructor() {
-        this.processor = new NewsDataProcessor_1.NewsDataProcessor();
+        this.processor = new NewsDataProcessor();
     }
     /**
      * Exécute le pipeline complet de traitement des nouvelles
@@ -48,13 +12,19 @@ class NewsDataManager {
     async runDailyNewsPipeline() {
         console.log('🚀 Starting daily news processing pipeline...');
         // Importer le NewsAggregator ici pour éviter les imports circulaires
-        const { NewsAggregator } = await Promise.resolve().then(() => __importStar(require('../ingestion/NewsAggregator')));
+        const { NewsAggregator } = await import('../ingestion/NewsAggregator');
         const aggregator = new NewsAggregator();
         // 1. Récupérer les nouvelles de TOUTES les sources via l'agrégateur
         console.log('📰 Fetching news from all sources...');
-        // fetchAndSaveAllNews récupère ZeroHedge, CNBC, FinancialJuice, Finnhub, FRED, et TradingEconomics
-        // et les sauvegarde déjà dans la DB brute. Nous récupérons le tableau pour le processing.
-        const allNews = await aggregator.fetchAndSaveAllNews();
+        // Fetch news from all sources
+        const zhNews = await aggregator.fetchZeroHedgeHeadlines();
+        const cnbcNews = await aggregator.fetchCNBCMarketNews();
+        const fjNews = await aggregator.fetchFinancialJuice();
+        const xNews = await aggregator.fetchXFeedsFromOpml();
+        const finnhubNews = await aggregator.fetchFinnhubNews();
+        const fredData = await aggregator.fetchFredEconomicData();
+        const teData = await aggregator.fetchTradingEconomicsCalendar();
+        const allNews = [...zhNews, ...cnbcNews, ...fjNews, ...xNews, ...finnhubNews, ...fredData, ...teData];
         console.log(`📊 Fetched ${allNews.length} total news items from all sources`);
         // 2. Traiter et nettoyer les données
         console.log('🧹 Processing and cleaning news data...');
@@ -253,5 +223,4 @@ class NewsDataManager {
         return finalPath;
     }
 }
-exports.NewsDataManager = NewsDataManager;
 //# sourceMappingURL=NewsDataManager.js.map

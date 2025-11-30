@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.VixPlaywrightScraper = void 0;
-const playwright_1 = require("playwright");
-class VixPlaywrightScraper {
+import { chromium } from 'playwright';
+export class VixPlaywrightScraper {
     browser = null;
     cache;
     metrics;
@@ -22,7 +19,7 @@ class VixPlaywrightScraper {
             try {
                 // Attendre un court délai pour éviter les race conditions
                 await new Promise(resolve => setTimeout(resolve, 100));
-                this.browser = await playwright_1.chromium.launch({
+                this.browser = await chromium.launch({
                     headless: true,
                     args: ['--no-sandbox', '--disable-setuid-sandbox'],
                     timeout: 30000,
@@ -403,15 +400,27 @@ class VixPlaywrightScraper {
                     }
                 }
                 else {
-                    console.log('[Investing.com] Meta Tag non trouvé - fallback nécessaire');
+                    console.log('[Investing.com] Meta Tag non trouvé - PAS DE FALLBACK');
                 }
             }
             catch (e) {
                 console.log('[Investing.com] Erreur Meta Tag:', e instanceof Error ? e.message : e);
             }
-            // FALLBACK - seulement si Meta Tag a échoué
-            console.log('[Investing.com] Fallback vers DOM selectors...');
-            await page.waitForTimeout(2000); // Attendre le chargement complet
+            // NO FALLBACK: Si Meta Tag a échoué, on retourne un résultat d'erreur
+            console.log('[Investing.com] ❌ Pas de fallback - retourne résultat d\'erreur si pas de données Meta Tag');
+            return {
+                source: 'Investing.com',
+                value: null,
+                change_abs: null,
+                change_pct: null,
+                previous_close: null,
+                open: null,
+                high: null,
+                low: null,
+                last_update: null,
+                news_headlines: [],
+                error: 'Meta tag extraction failed - no fallback available',
+            };
             // Accepter les cookies si nécessaire
             try {
                 const cookieSelectors = [
@@ -759,42 +768,12 @@ class VixPlaywrightScraper {
                     continue; // Ignorer les erreurs individuelles
                 }
             }
-            // Approche alternative simple si pas assez de news
+            // NO FALLBACK: Si pas assez de news, on retourne ce qu'on a trouvé - PAS DE FALLBACK
             if (news.length < 2) {
-                try {
-                    const fallbackLinks = await Promise.race([
-                        page.locator('a[href*="/story/"]').all(),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('Fallback timeout')), 1500)),
-                    ]);
-                    for (const element of fallbackLinks.slice(0, 3 - news.length)) {
-                        try {
-                            const title = await Promise.race([
-                                element.textContent(),
-                                new Promise((_, reject) => setTimeout(() => reject(new Error('Title timeout')), 300)),
-                            ]);
-                            const href = await Promise.race([
-                                element.getAttribute('href'),
-                                new Promise((_, reject) => setTimeout(() => reject(new Error('Href timeout')), 300)),
-                            ]);
-                            if (title && href && title.trim().length > 15) {
-                                const cleanTitle = title.replace(/^\d{1,2}:\d{2}\s*(AM|PM)\s*/i, '').trim();
-                                news.push({
-                                    title: cleanTitle,
-                                    url: href.startsWith('http') ? href : `https://www.marketwatch.com${href}`,
-                                    published_at: new Date().toISOString(),
-                                    source_date: new Date(),
-                                    relative_time: 'Recent',
-                                    author: '',
-                                });
-                            }
-                        }
-                        catch {
-                            continue;
-                        }
-                    }
-                }
-                catch {
-                    // Ignorer les erreurs de fallback
+                console.log('[VixPlaywright] ⚠️ News insuffisantes trouvées, PAS DE FALLBACK autorisé');
+                // Pas de fallback - on garde seulement ce qui a été trouvé
+                if (news.length === 0) {
+                    console.log('[VixPlaywright] ❌ Aucune news trouvée et aucun fallback');
                 }
             }
         }
@@ -1282,5 +1261,4 @@ class VixPlaywrightScraper {
         return lines;
     }
 }
-exports.VixPlaywrightScraper = VixPlaywrightScraper;
 //# sourceMappingURL=VixPlaywrightScraper.js.map

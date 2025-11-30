@@ -37,7 +37,6 @@ async function testRougePulseAgent() {
 
     await agent.close();
     process.exit(0);
-
   } catch (error) {
     console.error('❌ Erreur:', error.message);
     process.exit(1);

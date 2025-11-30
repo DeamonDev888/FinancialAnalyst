@@ -8,7 +8,7 @@ import {
 } from '../database/NewsValidationService';
 import { NewsDatabaseService } from '../database/NewsDatabaseService';
 import { DataMaintenanceService } from '../database/DataMaintenanceService';
-import { VixPlaywrightScraper } from '../ingestion/VixPlaywrightScraper';
+// import { VixPlaywrightScraper } from '../ingestion/VixPlaywrightScraper'; // File removed
 import { FinnhubClient } from '../ingestion/FinnhubClient';
 import * as dotenv from 'dotenv';
 
@@ -66,7 +66,7 @@ export class EnhancedNewsPipeline {
   private validationService: NewsValidationService;
   private databaseService: NewsDatabaseService;
   private maintenanceService: DataMaintenanceService;
-  private vixScraper: VixPlaywrightScraper;
+  // private vixScraper: VixPlaywrightScraper; // Commented out - file removed
   private finnhubClient: FinnhubClient;
 
   private config: PipelineConfig = {
@@ -89,7 +89,7 @@ export class EnhancedNewsPipeline {
     this.validationService = new NewsValidationService();
     this.databaseService = new NewsDatabaseService();
     this.maintenanceService = new DataMaintenanceService();
-    this.vixScraper = new VixPlaywrightScraper();
+    // this.vixScraper = new VixPlaywrightScraper(); // Commented out - file removed
     this.finnhubClient = new FinnhubClient();
   }
 
@@ -240,9 +240,9 @@ export class EnhancedNewsPipeline {
       return await this.finalizePipeline(result, startTime);
     } finally {
       // Nettoyer les ressources
-      if (this.vixScraper) {
-        await this.vixScraper.close();
-      }
+      // if (this.vixScraper) {
+      //   await this.vixScraper.close();
+      // } // Commented out - file removed
       if (this.validationService) {
         await this.validationService.close();
       }
@@ -277,7 +277,8 @@ export class EnhancedNewsPipeline {
   private async fetchVIXData(result: PipelineResult): Promise<void> {
     try {
       console.log('   📈 Récupération VIX...');
-      const vixResults = await this.vixScraper.scrapeAll();
+      // const vixResults = await this.vixScraper.scrapeAll(); // Commented out - file removed
+      const vixResults: any[] = []; // Empty array as fallback
       const validVIX = vixResults.find(r => r.value !== null && r.value > 0);
 
       if (validVIX && validVIX.value !== null) {

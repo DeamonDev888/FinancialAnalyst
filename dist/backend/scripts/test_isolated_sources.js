@@ -1,9 +1,7 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const playwright_1 = require("playwright");
+import { chromium } from 'playwright';
 async function testIsolatedSources() {
     console.log('🧪 TEST ISOLÉ DES SOURCES - APPROCHE MINIMALISTE\n');
-    const browser = await playwright_1.chromium.launch({
+    const browser = await chromium.launch({
         headless: false, // Visible pour debug
         args: [
             '--no-sandbox',

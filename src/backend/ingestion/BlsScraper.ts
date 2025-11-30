@@ -1,13 +1,22 @@
 import { Browser, Page } from 'playwright';
 import { Pool } from 'pg';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { chromium } = require('playwright-extra');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const stealth = require('puppeteer-extra-plugin-stealth');
+// Dynamic imports for playwright-extra (ES module compatibility)
+let chromium: any;
+let stealth: any;
 
-// Add stealth plugin
-chromium.use(stealth());
+(async () => {
+  try {
+    const playwrightExtra = await import('playwright-extra');
+    const stealthPlugin = await import('puppeteer-extra-plugin-stealth');
+    chromium = playwrightExtra.chromium;
+    stealth = stealthPlugin.default;
+    chromium.use(stealth());
+  } catch (error) {
+    console.warn('playwright-extra not available, using regular playwright');
+    chromium = (await import('playwright')).chromium;
+  }
+})();
 
 export interface BlsEvent {
   event_name: string;
@@ -19,17 +28,9 @@ export interface BlsEvent {
 
 export class BlsScraper {
   private browser: Browser | null = null;
-  private pool: Pool;
 
   constructor() {
-    // Initialize DB connection
-    this.pool = new Pool({
-      user: process.env.DB_USER || 'postgres',
-      host: process.env.DB_HOST || 'localhost',
-      database: process.env.DB_NAME || 'financial_analyst',
-      password: process.env.DB_PASSWORD || 'password',
-      port: parseInt(process.env.DB_PORT || '5432'),
-    });
+    // No database connection needed - data is returned as NewsItem
   }
 
   async init(): Promise<void> {
@@ -57,7 +58,6 @@ export class BlsScraper {
       await this.browser.close();
       this.browser = null;
     }
-    await this.pool.end();
   }
 
   private async createStealthPage(): Promise<Page> {
@@ -131,7 +131,7 @@ export class BlsScraper {
       await this.humanDelay(page, 2000, 5000);
 
       // Debug: Save content to check if we are blocked or just have wrong selectors
-      const fs = require('fs');
+      const fs = await import('fs');
       await fs.promises.writeFile('bls_dump.html', await page.content());
       await page.screenshot({ path: 'bls_screenshot.png', fullPage: true });
       console.log('Saved debug dump to bls_dump.html and bls_screenshot.png');
@@ -214,69 +214,4 @@ export class BlsScraper {
     return results;
   }
 
-  async saveToDatabase(events: BlsEvent[]): Promise<void> {
-    if (events.length === 0) return;
-
-    console.log(`Saving ${events.length} events to database...`);
-    let client;
-    try {
-      console.log('Connecting to database...');
-      client = await this.pool.connect();
-      console.log('Connected to database.');
-    } catch (e) {
-      console.error('Failed to connect to database:', e);
-      throw e;
-    }
-
-    try {
-      console.log('Starting transaction...');
-      await client.query('BEGIN');
-      console.log('Transaction started.');
-
-      for (const event of events) {
-        // Map to economic_events table
-        // event_date, country, event_name, importance, actual, forecast, previous, currency, source
-
-        // We need to parse the value to get 'actual'.
-        // BLS values often come as "+0.2%" or "3.9%".
-
-        try {
-          console.log(`Inserting event: ${event.event_name}`);
-          await client.query(
-            `INSERT INTO economic_events 
-            (event_date, country, event_name, actual, source, importance, currency)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT (event_date, country, event_name) 
-            DO UPDATE SET actual = EXCLUDED.actual, created_at = NOW()`,
-            [
-              event.release_date ? new Date(event.release_date) : new Date(),
-              'United States',
-              event.event_name,
-              event.value,
-              'BLS',
-              3, // High importance for BLS data usually
-              'USD',
-            ]
-          );
-          console.log('Event inserted.');
-        } catch (insertError) {
-          console.error(`Failed to insert event: ${event.event_name}`, insertError);
-          // Continue with other events
-        }
-      }
-
-      console.log('Committing transaction...');
-      await client.query('COMMIT');
-      console.log('Data saved successfully.');
-    } catch (e) {
-      console.log('Rolling back transaction...');
-      await client.query('ROLLBACK');
-      console.error('Error saving to database (Transaction Rollback):', e);
-      throw e;
-    } finally {
-      console.log('Releasing client...');
-      client.release();
-      console.log('Client released.');
-    }
-  }
 }

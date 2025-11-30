@@ -7,7 +7,6 @@ export interface BlsEvent {
 }
 export declare class BlsScraper {
     private browser;
-    private pool;
     constructor();
     init(): Promise<void>;
     close(): Promise<void>;
@@ -15,6 +14,5 @@ export declare class BlsScraper {
     private humanDelay;
     private parseDate;
     scrapeLatestNumbers(): Promise<BlsEvent[]>;
-    saveToDatabase(events: BlsEvent[]): Promise<void>;
 }
 //# sourceMappingURL=BlsScraper.d.ts.map

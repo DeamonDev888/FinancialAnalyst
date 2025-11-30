@@ -1,12 +1,9 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SP500FuturesScraper = void 0;
-const playwright_1 = require("playwright");
-class SP500FuturesScraper {
+import { chromium } from 'playwright';
+export class SP500FuturesScraper {
     browser = null;
     async init() {
         if (!this.browser) {
-            this.browser = await playwright_1.chromium.launch({
+            this.browser = await chromium.launch({
                 headless: true,
                 args: [
                     '--no-sandbox',
@@ -374,5 +371,4 @@ class SP500FuturesScraper {
         return this.fetchSP500FuturesWithZeroHedge();
     }
 }
-exports.SP500FuturesScraper = SP500FuturesScraper;
 //# sourceMappingURL=SP500FuturesScraper.js.map

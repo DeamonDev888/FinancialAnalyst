@@ -51,9 +51,16 @@ export class NewsDataManager {
 
     // 1. Récupérer les nouvelles de TOUTES les sources via l'agrégateur
     console.log('📰 Fetching news from all sources...');
-    // fetchAndSaveAllNews récupère ZeroHedge, CNBC, FinancialJuice, Finnhub, FRED, et TradingEconomics
-    // et les sauvegarde déjà dans la DB brute. Nous récupérons le tableau pour le processing.
-    const allNews = await aggregator.fetchAndSaveAllNews();
+    // Fetch news from all sources
+    const zhNews = await aggregator.fetchZeroHedgeHeadlines();
+    const cnbcNews = await aggregator.fetchCNBCMarketNews();
+    const fjNews = await aggregator.fetchFinancialJuice();
+    const xNews = await aggregator.fetchXFeedsFromOpml();
+    const finnhubNews = await aggregator.fetchFinnhubNews();
+    const fredData = await aggregator.fetchFredEconomicData();
+    const teData = await aggregator.fetchTradingEconomicsCalendar();
+
+    const allNews = [...zhNews, ...cnbcNews, ...fjNews, ...xNews, ...finnhubNews, ...fredData, ...teData];
 
     console.log(`📊 Fetched ${allNews.length} total news items from all sources`);
 

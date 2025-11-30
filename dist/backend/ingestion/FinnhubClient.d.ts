@@ -23,7 +23,6 @@ export interface StockData {
 export declare class FinnhubClient {
     private apiKey;
     private baseUrl;
-    private futuresScraper;
     constructor();
     /**
      * Récupère les news générales du marché
@@ -41,12 +40,12 @@ export declare class FinnhubClient {
     fetchQuote(symbol: string): Promise<StockData | null>;
     /**
      * Récupère spécifiquement les données du contrat future ES (E-mini S&P 500)
-     * Méthode améliorée avec scraping prioritaire pour obtenir le vrai prix du contrat future S&P500
+     * Simplifié après suppression du SP500FuturesScraper
      */
     fetchESFutures(): Promise<StockData | null>;
     /**
      * Récupère spécifiquement les données du S&P 500
-     * Version corrigée qui essaie d'abord les vrais contrats futures
+     * Simplifié après suppression du SP500FuturesScraper
      */
     fetchSP500Data(): Promise<StockData | null>;
     /**

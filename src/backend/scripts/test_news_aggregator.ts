@@ -19,8 +19,8 @@ async function main() {
 
     // Test full aggregation
     console.log('Fetching All News...');
-    const allNews = await aggregator.fetchAndSaveAllNews();
-    console.log(`Total News Fetched: ${allNews.length}`);
+    const totalNews = await aggregator.fetchAndSaveAllNews();
+    console.log(`Total News Fetched: ${totalNews}`);
   } catch (error) {
     console.error('Error running aggregator:', error);
   }

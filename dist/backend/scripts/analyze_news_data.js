@@ -1,7 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const NewsDataManager_1 = require("../data/NewsDataManager");
-const NewsDataProcessor_1 = require("../data/NewsDataProcessor");
+import { NewsDataManager } from '../data/NewsDataManager';
+import { NewsDataProcessor } from '../data/NewsDataProcessor';
 /**
  * SCRIPT: analyze_news_data.ts
  *
@@ -17,8 +15,8 @@ const NewsDataProcessor_1 = require("../data/NewsDataProcessor");
 async function main() {
     const args = process.argv.slice(2);
     const command = args[0];
-    const dataManager = new NewsDataManager_1.NewsDataManager();
-    const processor = new NewsDataProcessor_1.NewsDataProcessor();
+    const dataManager = new NewsDataManager();
+    const processor = new NewsDataProcessor();
     try {
         switch (command) {
             case 'week':

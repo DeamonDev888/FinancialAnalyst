@@ -49,7 +49,6 @@ export declare class EnhancedNewsPipeline {
     private validationService;
     private databaseService;
     private maintenanceService;
-    private vixScraper;
     private finnhubClient;
     private config;
     constructor(config?: Partial<PipelineConfig>);

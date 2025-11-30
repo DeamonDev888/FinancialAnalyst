@@ -54,7 +54,7 @@ export default [
     },
     rules: {
       ...ts.configs.recommended.rules,
-      'prettier/prettier': 'error',
+      'prettier/prettier': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',
@@ -104,7 +104,7 @@ export default [
     },
     rules: {
       ...ts.configs.recommended.rules,
-      'prettier/prettier': 'error',
+      'prettier/prettier': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',

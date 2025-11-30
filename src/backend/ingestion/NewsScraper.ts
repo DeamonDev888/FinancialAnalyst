@@ -1,4 +1,3 @@
-
 import { chromium, Browser, Page } from 'playwright';
 
 export class NewsScraper {
@@ -42,10 +41,11 @@ export class NewsScraper {
 
     try {
       context = await this.browser.newContext({
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        userAgent:
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
         viewport: { width: 1920, height: 1080 },
       });
-      
+
       page = await context.newPage();
 
       // Block images/fonts to speed up
@@ -60,10 +60,18 @@ export class NewsScraper {
       const content = await page.evaluate(() => {
         // Remove clutter
         const removeSelectors = [
-          'script', 'style', 'nav', 'header', 'footer', 
-          '.ad', '.advertisement', '.social-share', 
-          '#cookie-banner', '.cookie-consent',
-          '[role="complementary"]', '.sidebar'
+          'script',
+          'style',
+          'nav',
+          'header',
+          'footer',
+          '.ad',
+          '.advertisement',
+          '.social-share',
+          '#cookie-banner',
+          '.cookie-consent',
+          '[role="complementary"]',
+          '.sidebar',
         ];
         removeSelectors.forEach(sel => {
           document.querySelectorAll(sel).forEach(el => el.remove());
@@ -80,7 +88,7 @@ export class NewsScraper {
           '.entry-content',
           '.story-content',
           '#content',
-          '.main-content'
+          '.main-content',
         ];
 
         for (const selector of selectors) {
@@ -94,13 +102,45 @@ export class NewsScraper {
         const paragraphs = Array.from(document.querySelectorAll('p'))
           .map(p => p.innerText.trim())
           .filter(text => text.length > 50);
-        
+
         return paragraphs.join('\n\n');
       });
 
       return content.slice(0, 5000); // Limit length
     } catch (error) {
-      console.warn(`NewsScraper: Failed to scrape ${url}:`, error instanceof Error ? error.message : error);
+      console.warn(
+        `NewsScraper: Failed to scrape ${url}:`,
+        error instanceof Error ? error.message : error
+      );
+      return '';
+    } finally {
+      if (page) await page.close();
+      if (context) await context.close();
+    }
+  }
+  async fetchPageContent(url: string): Promise<string> {
+    if (!this.browser) await this.init();
+    if (!this.browser) return '';
+
+    let context;
+    let page;
+
+    try {
+      context = await this.browser.newContext({
+        userAgent:
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      });
+
+      page = await context.newPage();
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+
+      // Return the full content (works for XML too if browser renders it or just source)
+      return await page.content();
+    } catch (error) {
+      console.warn(
+        `NewsScraper: Failed to fetch content from ${url}:`,
+        error instanceof Error ? error.message : error
+      );
       return '';
     } finally {
       if (page) await page.close();
