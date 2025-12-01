@@ -40,7 +40,9 @@ async function testVixDataQuery() {
       console.log(`\n✅ Succès: ${result.rows.length} enregistrements trouvés`);
 
       result.rows.forEach((row, i) => {
-        console.log(`   [${i+1}] ${row.source}: ${row.value} (change: ${row.change_abs || 'NULL'}, pct: ${row.change_pct || 'NULL'})`);
+        console.log(
+          `   [${i + 1}] ${row.source}: ${row.value} (change: ${row.change_abs || 'NULL'}, pct: ${row.change_pct || 'NULL'})`
+        );
       });
     } catch (error) {
       console.error('\n❌ Erreur SQL:', error.message);
@@ -66,12 +68,11 @@ async function testVixDataQuery() {
       console.log(`\n✅ Requête minimale: ${minimalResult.rows.length} enregistrements`);
 
       minimalResult.rows.forEach((row, i) => {
-        console.log(`   [${i+1}] ${row.source}: ${row.value} (${row.created_at})`);
+        console.log(`   [${i + 1}] ${row.source}: ${row.value} (${row.created_at})`);
       });
     } catch (error) {
       console.error('\n❌ Erreur requête minimale:', error.message);
     }
-
   } catch (error) {
     console.error('❌ Erreur générale:', error.message);
   } finally {

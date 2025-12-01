@@ -2,13 +2,13 @@ import { TradingEconomicsScraper } from './TradingEconomicsScraper';
 import { ZeroHedgeNewsScraper } from './scrapers/ZeroHedgeNewsScraper';
 import { CNBCNewsScraper } from './scrapers/CNBCNewsScraper';
 import { FinancialJuiceNewsScraper } from './scrapers/FinancialJuiceNewsScraper';
-import { XFeedsNewsScraper } from './scrapers/XFeedsNewsScraper';
 import { FredNewsScraper } from './scrapers/FredNewsScraper';
 import { FinnhubNewsScraper } from './scrapers/FinnhubNewsScraper';
 import { CboeNewsScraper } from './scrapers/CboeNewsScraper';
 import { BlsNewsScraper } from './scrapers/BlsNewsScraper';
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -26,7 +26,6 @@ export class NewsAggregator {
   private zeroHedgeScraper: ZeroHedgeNewsScraper;
   private cnbcScraper: CNBCNewsScraper;
   private financialJuiceScraper: FinancialJuiceNewsScraper;
-  private xFeedsScraper: XFeedsNewsScraper;
   private fredScraper: FredNewsScraper;
   private finnhubNewsScraper: FinnhubNewsScraper;
   private cboeScraper: CboeNewsScraper;
@@ -38,9 +37,8 @@ export class NewsAggregator {
     this.zeroHedgeScraper = new ZeroHedgeNewsScraper();
     this.cnbcScraper = new CNBCNewsScraper();
     this.financialJuiceScraper = new FinancialJuiceNewsScraper();
-    this.xFeedsScraper = new XFeedsNewsScraper();
     this.fredScraper = new FredNewsScraper();
-    this.finnhubScraper = new FinnhubNewsScraper();
+    this.finnhubNewsScraper = new FinnhubNewsScraper();
     this.cboeScraper = new CboeNewsScraper();
     this.blsScraper = new BlsNewsScraper();
     this.pool = new Pool({
@@ -52,6 +50,22 @@ export class NewsAggregator {
     });
   }
 
+  /**
+   * Initialise la connexion à la base de données et vérifie que tout est prêt
+   */
+  public async init(): Promise<void> {
+    try {
+      // Test de la connexion BDD
+      const client = await this.pool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      console.log('✅ NewsAggregator initialisé - base de données connectée');
+    } catch (error) {
+      throw new Error(
+        `Initialisation NewsAggregator échouée: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
 
   /**
    * Récupère les news via RSS pour ZeroHedge
@@ -91,22 +105,17 @@ export class NewsAggregator {
 
   /**
    * Récupère les news des feeds X via OPML
+   * REMOVED - Use the separate X scraper module at src/x_scraper/
    */
-  async fetchXFeedsFromOpml(): Promise<NewsItem[]> {
-    await this.xFeedsScraper.init();
-    try {
-      return await this.xFeedsScraper.fetchNews();
-    } finally {
-      await this.xFeedsScraper.close();
-    }
-  }
-
+  //   } finally {
+  //   }
+  // }
 
   /**
    * Récupère les news via Finnhub
    */
   async fetchFinnhubNews(): Promise<NewsItem[]> {
-    return await this.finnhubScraper.fetchNews();
+    return await this.finnhubNewsScraper.fetchNews();
   }
 
   /**
@@ -227,16 +236,21 @@ export class NewsAggregator {
     }
   }
 
-
   public async fetchAndSaveAllNews(): Promise<number> {
     const startTime = Date.now();
     let totalNews = 0;
     let successfulSources = 0;
     let failedSources = 0;
-    const sourceResults: { source: string; newsCount: number; status: 'SUCCESS' | 'FAILED' | 'ERROR'; error?: string; duration: number }[] = [];
+    const sourceResults: {
+      source: string;
+      newsCount: number;
+      status: 'SUCCESS' | 'FAILED' | 'ERROR';
+      error?: string;
+      duration: number;
+    }[] = [];
 
-    console.log('🚀 DÉMARRAGE DE L\'AGRÉGATION DE NEWS');
-    console.log('=' .repeat(60));
+    console.log("🚀 DÉMARRAGE DE L'AGRÉGATION DE NEWS");
+    console.log('='.repeat(60));
     console.log(`⏰ Début: ${new Date().toISOString()}`);
     console.log(`🔧 Mode: Production (Aucun fallback toléré)`);
     console.log('');
@@ -262,7 +276,6 @@ export class NewsAggregator {
         await this.zeroHedgeScraper.init();
         await this.cnbcScraper.init();
         await this.financialJuiceScraper.init();
-        await this.xFeedsScraper.init();
         await this.cboeScraper.init();
         await this.blsScraper.init();
 
@@ -270,26 +283,57 @@ export class NewsAggregator {
         console.log(`✅ Tous les scrapers initialisés en ${initDuration}ms`);
         console.log('');
       } catch (initError) {
-        console.error('❌ ÉCHEC D\'INITIALISATION CRITIQUE:', initError);
+        console.error("❌ ÉCHEC D'INITIALISATION CRITIQUE:", initError);
         const errorMessage = initError instanceof Error ? initError.message : String(initError);
         throw new Error(`Initialisation des scrapers échouée: ${errorMessage}`);
       }
 
       // DÉFINITION DES SOURCES À TRAITER
       const sources = [
-        { name: 'ZeroHedge', scraper: () => this.zeroHedgeScraper.fetchNews(), description: 'News financières alternatives' },
-        { name: 'CNBC', scraper: () => this.cnbcScraper.fetchNews(), description: 'Actualités marchés US' },
-        { name: 'FinancialJuice', scraper: () => this.financialJuiceScraper.fetchNews(), description: 'Analyses financières' },
-        { name: 'X Feeds (OPML)', scraper: () => this.xFeedsScraper.fetchNews(), description: 'Feeds Twitter/X (290+ sources)' },
-        { name: 'Finnhub', scraper: () => this.finnhubScraper.fetchNews(), description: 'News marchés boursiers' },
-        { name: 'FRED', scraper: () => this.fredScraper.fetchNews(), description: 'Données économiques FED' },
-        { name: 'CBOE', scraper: () => this.cboeScraper.fetchNews(), description: 'Ratios options' },
-        { name: 'BLS', scraper: () => this.blsScraper.fetchNews(), description: 'Statistiques emploi US' },
-        { name: 'TradingEconomics', scraper: () => this.fetchTradingEconomicsCalendar(), description: 'Calendrier économique' },
+        {
+          name: 'ZeroHedge',
+          scraper: () => this.zeroHedgeScraper.fetchNews(),
+          description: 'News financières alternatives',
+        },
+        {
+          name: 'CNBC',
+          scraper: () => this.cnbcScraper.fetchNews(),
+          description: 'Actualités marchés US',
+        },
+        {
+          name: 'FinancialJuice',
+          scraper: () => this.financialJuiceScraper.fetchNews(),
+          description: 'Analyses financières',
+        },
+        {
+          name: 'Finnhub',
+          scraper: () => this.finnhubNewsScraper.fetchNews(),
+          description: 'News marchés boursiers',
+        },
+        {
+          name: 'FRED',
+          scraper: () => this.fredScraper.fetchNews(),
+          description: 'Données économiques FED',
+        },
+        {
+          name: 'CBOE',
+          scraper: () => this.cboeScraper.fetchNews(),
+          description: 'Ratios options',
+        },
+        {
+          name: 'BLS',
+          scraper: () => this.blsScraper.fetchNews(),
+          description: 'Statistiques emploi US',
+        },
+        {
+          name: 'TradingEconomics',
+          scraper: () => this.fetchTradingEconomicsCalendar(),
+          description: 'Calendrier économique',
+        },
       ];
 
       console.log('📡 DÉBUT DU SCRAPING DES SOURCES');
-      console.log('=' .repeat(60));
+      console.log('='.repeat(60));
 
       // TRAITEMENT DE CHAQUE SOURCE
       for (const source of sources) {
@@ -305,13 +349,15 @@ export class NewsAggregator {
             const savedCount = await this.saveNewsToDatabaseWithValidation(news, source.name);
             totalNews += savedCount;
 
-            console.log(`✅ [${source.name}] ${savedCount} news récupérées et sauvegardées (${sourceDuration}ms)`);
+            console.log(
+              `✅ [${source.name}] ${savedCount} news récupérées et sauvegardées (${sourceDuration}ms)`
+            );
 
             sourceResults.push({
               source: source.name,
               newsCount: savedCount,
               status: 'SUCCESS',
-              duration: sourceDuration
+              duration: sourceDuration,
             });
 
             successfulSources++;
@@ -323,12 +369,11 @@ export class NewsAggregator {
               newsCount: 0,
               status: 'FAILED',
               error: 'Aucune donnée récupérée',
-              duration: sourceDuration
+              duration: sourceDuration,
             });
 
             failedSources++;
           }
-
         } catch (error) {
           const sourceDuration = Date.now() - sourceStart;
           const errorMessage = error instanceof Error ? error.message : String(error);
@@ -340,7 +385,7 @@ export class NewsAggregator {
             newsCount: 0,
             status: 'ERROR',
             error: errorMessage,
-            duration: sourceDuration
+            duration: sourceDuration,
           });
 
           failedSources++;
@@ -352,7 +397,7 @@ export class NewsAggregator {
 
       console.log('');
       console.log('📊 RÉSULTATS FINAUX');
-      console.log('=' .repeat(60));
+      console.log('='.repeat(60));
 
       const totalDuration = Date.now() - startTime;
       const successRate = ((successfulSources / sources.length) * 100).toFixed(1);
@@ -366,20 +411,21 @@ export class NewsAggregator {
         console.log(`⚠️ Sources échouées: ${failedSources}`);
         console.log('');
         console.log('DÉTAIL DES ÉCHECS:');
-        sourceResults.filter(r => r.status !== 'SUCCESS').forEach(result => {
-          console.log(`  ❌ ${result.source}: ${result.error || 'Échec inconnu'}`);
-        });
+        sourceResults
+          .filter(r => r.status !== 'SUCCESS')
+          .forEach(result => {
+            console.log(`  ❌ ${result.source}: ${result.error || 'Échec inconnu'}`);
+          });
       }
 
       console.log('');
       console.log('🎉 AGRÉGATION TERMINÉE AVEC SUCCÈS !');
 
       return totalNews;
-
     } catch (criticalError) {
       const totalDuration = Date.now() - startTime;
       console.error('');
-      console.error('💥 ERREUR CRITIQUE DANS L\'AGRÉGATION:');
+      console.error("💥 ERREUR CRITIQUE DANS L'AGRÉGATION:");
       console.error(criticalError instanceof Error ? criticalError.message : String(criticalError));
       console.error(`⏱️ Durée avant échec: ${totalDuration}ms`);
       console.error('🔄 Tentative de nettoyage...');
@@ -394,17 +440,19 @@ export class NewsAggregator {
         await this.zeroHedgeScraper.close();
         await this.cnbcScraper.close();
         await this.financialJuiceScraper.close();
-        await this.xFeedsScraper.close();
         await this.cboeScraper.close();
         await this.blsScraper.close();
 
         console.log('✅ Toutes les ressources nettoyées');
       } catch (cleanupError) {
-        console.error('⚠️ Erreur lors du nettoyage:', cleanupError instanceof Error ? cleanupError.message : String(cleanupError));
+        console.error(
+          '⚠️ Erreur lors du nettoyage:',
+          cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+        );
       }
 
-      console.log('🏁 FIN DE L\'AGRÉGATION');
-      console.log('=' .repeat(60));
+      console.log("🏁 FIN DE L'AGRÉGATION");
+      console.log('='.repeat(60));
     }
   }
 
@@ -417,7 +465,9 @@ export class NewsAggregator {
       await client.query('SELECT 1');
       client.release();
     } catch (error) {
-      throw new Error(`Connexion base de données échouée: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Connexion base de données échouée: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -427,25 +477,55 @@ export class NewsAggregator {
   private async verifySources(): Promise<void> {
     const sourcesToCheck = [
       { name: 'ZeroHedge RSS', url: 'http://feeds.feedburner.com/zerohedge/feed' },
-      { name: 'CNBC RSS', url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664' },
-      { name: 'FinancialJuice RSS', url: 'https://www.financialjuice.com/feed.ashx?xy=rss' },
-      { name: 'FRED API', url: 'https://api.stlouisfed.org/fred/series/observations' },
-      { name: 'Finnhub API', url: 'https://finnhub.io/api/v1/news' },
-      { name: 'CBOE Barchart', url: 'https://www.barchart.com/stocks/quotes/$CPCO/interactive-chart' },
+      {
+        name: 'CNBC RSS',
+        url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664',
+      },
+      // { name: 'FinancialJuice RSS', url: 'https://www.financialjuice.com/feed.ashx?xy=rss' }, // Skipped to avoid 429 Rate Limit
+      {
+        name: 'FRED API',
+        url: process.env.FRED_API_KEY
+          ? `https://api.stlouisfed.org/fred/series/observations?series_id=GDP&api_key=${process.env.FRED_API_KEY}&file_type=json`
+          : 'https://api.stlouisfed.org/fred/series/observations',
+      },
+      {
+        name: 'Finnhub API',
+        url: process.env.FINNHUB_API_KEY
+          ? `https://finnhub.io/api/v1/news?category=general&token=${process.env.FINNHUB_API_KEY}`
+          : 'https://finnhub.io/api/v1/news',
+      },
+      { name: 'CBOE Barchart', url: 'https://www.barchart.com/stocks/quotes/$CPCO' },
       { name: 'BLS', url: 'https://www.bls.gov/' },
       { name: 'TradingEconomics', url: 'https://tradingeconomics.com/united-states/calendar' },
     ];
 
-    const axios = require('axios');
-
     for (const source of sourcesToCheck) {
       try {
-        await axios.head(source.url, { timeout: 5000 });
+        await axios.get(source.url, {
+          timeout: 10000,
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          },
+        });
         console.log(`  ✅ ${source.name}: OK`);
       } catch (error) {
-        const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : 'Timeout';
-        console.log(`  ⚠️ ${source.name}: Indisponible (${errorCode})`);
-        // On continue malgré les avertissements - pas de fallback toléré
+        let status = 0;
+        let code = 'Unknown';
+
+        if (axios.isAxiosError(error)) {
+          status = error.response?.status || 0;
+          code = error.code || 'Unknown';
+        }
+
+        // 400/401/403/429 usually mean the server is reachable but we need keys/params or are rate limited
+        // For verification purposes, this means the source is "Online"
+        if (status === 400 || status === 401 || status === 403 || status === 429) {
+          console.log(`  ✅ ${source.name}: Accessible (Auth/Param required - ${status})`);
+        } else {
+          console.log(`  ⚠️ ${source.name}: Indisponible (${code}/${status})`);
+        }
       }
     }
   }
@@ -453,7 +533,10 @@ export class NewsAggregator {
   /**
    * Sauvegarde les news avec validation supplémentaire
    */
-  private async saveNewsToDatabaseWithValidation(news: NewsItem[], sourceName: string): Promise<number> {
+  private async saveNewsToDatabaseWithValidation(
+    news: NewsItem[],
+    sourceName: string
+  ): Promise<number> {
     if (!news || news.length === 0) return 0;
 
     // VALIDATION DES DONNÉES
@@ -487,7 +570,6 @@ export class NewsAggregator {
     await this.zeroHedgeScraper.close();
     await this.cnbcScraper.close();
     await this.financialJuiceScraper.close();
-    await this.xFeedsScraper.close();
     await this.cboeScraper.close();
     await this.blsScraper.close();
     await this.pool.end();

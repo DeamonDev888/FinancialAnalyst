@@ -1,6 +1,5 @@
 import { chromium } from 'playwright';
 import * as fs from 'fs';
-import * as path from 'path';
 
 async function dumpHtml() {
   const browser = await chromium.launch({
@@ -42,7 +41,9 @@ async function dumpHtml() {
         await agreeButton.click();
         await page.waitForNavigation({ timeout: 30000, waitUntil: 'domcontentloaded' });
       }
-    } catch (e) {}
+    } catch {
+      // Ignore consent popup errors
+    }
 
     await page.waitForTimeout(5000);
     const yahooHtml = await page.content();

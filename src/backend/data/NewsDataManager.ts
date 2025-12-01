@@ -1,4 +1,6 @@
 import { NewsDataProcessor, DailyNewsSummary, ProcessedNewsData } from './NewsDataProcessor';
+import { NewsDeduplicationService, DeduplicationResult } from './NewsDeduplicationService';
+import { NewsItem } from '../ingestion/NewsAggregator';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -34,9 +36,11 @@ export interface MarketAnalysisReport {
 
 export class NewsDataManager {
   private processor: NewsDataProcessor;
+  private deduplicationService: NewsDeduplicationService;
 
   constructor() {
     this.processor = new NewsDataProcessor();
+    this.deduplicationService = new NewsDeduplicationService();
   }
 
   /**
@@ -51,22 +55,58 @@ export class NewsDataManager {
 
     // 1. Récupérer les nouvelles de TOUTES les sources via l'agrégateur
     console.log('📰 Fetching news from all sources...');
-    // Fetch news from all sources
+    // Fetch news from individual sources (including X via separate module)
     const zhNews = await aggregator.fetchZeroHedgeHeadlines();
     const cnbcNews = await aggregator.fetchCNBCMarketNews();
     const fjNews = await aggregator.fetchFinancialJuice();
-    const xNews = await aggregator.fetchXFeedsFromOpml();
+
+    // Try to get X news from separate module if available
+    let xNews: NewsItem[] = [];
+    try {
+      const { XScraperService } = await import('../../x_scraper/XScraperService');
+      const xScraper = new XScraperService();
+      if (await xScraper.opmlFileExists()) {
+        const xResult = await xScraper.runScraping();
+        if (xResult.success) {
+          xNews = xResult.items.map((item: any) => ({
+            title: item.title,
+            source: item.source,
+            url: item.url,
+            content: item.content,
+            timestamp: new Date(item.published_at),
+          }));
+          console.log(`🐦 Retrieved ${xNews.length} X news from separate module`);
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ X scraper module not available, continuing with other sources');
+    }
+
     const finnhubNews = await aggregator.fetchFinnhubNews();
     const fredData = await aggregator.fetchFredEconomicData();
     const teData = await aggregator.fetchTradingEconomicsCalendar();
 
-    const allNews = [...zhNews, ...cnbcNews, ...fjNews, ...xNews, ...finnhubNews, ...fredData, ...teData];
+    const allNews = [
+      ...zhNews,
+      ...cnbcNews,
+      ...fjNews,
+      ...xNews,
+      ...finnhubNews,
+      ...fredData,
+      ...teData,
+    ];
 
     console.log(`📊 Fetched ${allNews.length} total news items from all sources`);
 
-    // 2. Traiter et nettoyer les données
+    // 2. Dédupliquer les nouvelles pour éviter les doublons
+    console.log('🔍 Deduplicating news items...');
+    await this.deduplicationService.initializeTable(); // Ensure table exists
+    const deduplicationResult = await this.deduplicationService.deduplicate(allNews);
+    console.log(`✅ Deduplication complete: ${deduplicationResult.unique.length} unique, ${deduplicationResult.duplicate_count} duplicates removed`);
+
+    // 3. Traiter et nettoyer les données
     console.log('🧹 Processing and cleaning news data...');
-    const processedNews = await this.processor.processNews(allNews);
+    const processedNews = await this.processor.processNews(deduplicationResult.unique);
     console.log(`✅ Processed ${processedNews.length} valid news items`);
 
     // 3. Sauvegarder les données traitées
@@ -258,6 +298,24 @@ export class NewsDataManager {
     if (bullish > bearish && bullish > neutral) return 'bullish';
     if (bearish > bullish && bearish > neutral) return 'bearish';
     return 'neutral';
+  }
+
+  /**
+   * Récupère les statistiques de déduplication
+   */
+  async getDeduplicationStats(): Promise<{
+    total_fingerprints: number;
+    oldest_fingerprint: Date | null;
+    newest_fingerprint: Date | null;
+  }> {
+    return await this.deduplicationService.getStats();
+  }
+
+  /**
+   * Nettoie les anciens empreintes de déduplication
+   */
+  async cleanOldFingerprints(daysToKeep: number = 30): Promise<number> {
+    return await this.deduplicationService.cleanOldFingerprints(daysToKeep);
   }
 
   /**

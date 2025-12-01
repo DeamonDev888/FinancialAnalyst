@@ -143,7 +143,10 @@ export class FinnhubClient {
     try {
       return await this.fetchQuote('ES=F'); // Symbole Yahoo Finance pour ES futures
     } catch (error) {
-      console.log(`[Finnhub] ❌ ES Futures API échoué:`, error instanceof Error ? error.message : error);
+      console.log(
+        `[Finnhub] ❌ ES Futures API échoué:`,
+        error instanceof Error ? error.message : error
+      );
       return null;
     }
   }

@@ -27,7 +27,9 @@ async function checkVixDataStructure() {
     } else {
       console.log('\n📋 Structure table vix_data:');
       vixDataColumns.rows.forEach(col => {
-        console.log(`   - ${col.column_name} (${col.data_type}) ${col.is_nullable === 'NO' ? 'NOT NULL' : 'NULL'}`);
+        console.log(
+          `   - ${col.column_name} (${col.data_type}) ${col.is_nullable === 'NO' ? 'NOT NULL' : 'NULL'}`
+        );
       });
     }
 
@@ -43,7 +45,9 @@ async function checkVixDataStructure() {
 
     console.log('\n📋 Structure tables disponibles:');
     marketDataColumns.rows.forEach(col => {
-      console.log(`   - ${col.column_name} (${col.data_type}) ${col.is_nullable === 'NO' ? 'NOT NULL' : 'NULL'}`);
+      console.log(
+        `   - ${col.column_name} (${col.data_type}) ${col.is_nullable === 'NO' ? 'NOT NULL' : 'NULL'}`
+      );
     });
 
     // Vérifier les données récentes
@@ -59,7 +63,9 @@ async function checkVixDataStructure() {
 
       console.log(`   vix_data: ${vixData.rows.length} enregistrements`);
       vixData.rows.forEach((row, i) => {
-        console.log(`     [${i+1}] ${row.source || 'N/A'}: ${row.value || row.price || 'N/A'} (${row.created_at})`);
+        console.log(
+          `     [${i + 1}] ${row.source || 'N/A'}: ${row.value || row.price || 'N/A'} (${row.created_at})`
+        );
       });
     } catch (error) {
       console.log(`   vix_data: Erreur - ${error.message}`);
@@ -76,12 +82,11 @@ async function checkVixDataStructure() {
 
       console.log(`   market_data (VIX): ${marketData.rows.length} enregistrements`);
       marketData.rows.forEach((row, i) => {
-        console.log(`     [${i+1}] ${row.source}: ${row.price} (${row.created_at})`);
+        console.log(`     [${i + 1}] ${row.source}: ${row.price} (${row.created_at})`);
       });
     } catch (error) {
       console.log(`   market_data: Erreur - ${error.message}`);
     }
-
   } catch (error) {
     console.error('❌ Erreur:', error.message);
   } finally {

@@ -50,10 +50,12 @@ export class OpmlIngestionScript {
       const chunkSize = 5;
       for (let i = 0; i < feeds.length; i += chunkSize) {
         const chunk = feeds.slice(i, i + chunkSize);
-        console.log(`Processing chunk ${i / chunkSize + 1} of ${Math.ceil(feeds.length / chunkSize)}...`);
-        
+        console.log(
+          `Processing chunk ${i / chunkSize + 1} of ${Math.ceil(feeds.length / chunkSize)}...`
+        );
+
         await Promise.all(chunk.map(feed => this.processFeed(feed)));
-        
+
         // Small delay between chunks
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
@@ -71,7 +73,7 @@ export class OpmlIngestionScript {
     console.log(`Fetching feed: ${feed.title} (${feed.xmlUrl})`);
     try {
       const pageContent = await this.newsScraper.fetchPageContent(feed.xmlUrl);
-      
+
       let $ = cheerio.load(pageContent, { xmlMode: true });
       let entries = $('item').toArray();
 
@@ -88,7 +90,7 @@ export class OpmlIngestionScript {
             $ = $xml; // Update $ to use the XML context
           }
         } else {
-             $ = $html as any; // Use HTML context if items found there
+          $ = $html as any; // Use HTML context if items found there
         }
       }
 
@@ -116,9 +118,11 @@ export class OpmlIngestionScript {
       }
 
       await this.saveNewsToDatabase(newsItems);
-
     } catch (error) {
-      console.error(`Failed to process feed ${feed.title}:`, error instanceof Error ? error.message : String(error));
+      console.error(
+        `Failed to process feed ${feed.title}:`,
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
 
@@ -127,8 +131,8 @@ export class OpmlIngestionScript {
 
     const client = await this.pool.connect();
     try {
-        // Ensure table exists (idempotent)
-        await client.query(`
+      // Ensure table exists (idempotent)
+      await client.query(`
             CREATE TABLE IF NOT EXISTS news_items (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 title VARCHAR(1000) NOT NULL,
@@ -168,8 +172,8 @@ export class OpmlIngestionScript {
             ]
           );
         } catch (e) {
-             // Ignore duplicate key errors if logic above fails, but log others
-             console.error(`Error saving item ${item.title}:`, e);
+          // Ignore duplicate key errors if logic above fails, but log others
+          console.error(`Error saving item ${item.title}:`, e);
         }
       }
       console.log(`Saved ${news.length} items from ${news[0]?.source}`);

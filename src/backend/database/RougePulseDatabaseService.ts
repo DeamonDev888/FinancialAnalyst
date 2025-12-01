@@ -287,6 +287,26 @@ export class RougePulseDatabaseService {
     }
   }
 
+  async getEconomicEvents(startDate: Date, endDate: Date): Promise<any[]> {
+    if (!this.pool) return [];
+
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT * FROM economic_events
+         WHERE event_date >= $1 AND event_date <= $2
+         ORDER BY event_date ASC`,
+        [startDate, endDate]
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('❌ Error fetching economic events:', error);
+      return [];
+    } finally {
+      client.release();
+    }
+  }
+
   async close(): Promise<void> {
     if (this.pool) {
       await this.pool.end();

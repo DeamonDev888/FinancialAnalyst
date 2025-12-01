@@ -41,24 +41,26 @@ export class FinnhubNewsScraper {
           const response = await axios.get(url, {
             timeout: 10000,
             headers: {
-              'User-Agent': 'Mozilla/5.0 (compatible; NovaQuoteAgent/1.0)'
-            }
+              'User-Agent': 'Mozilla/5.0 (compatible; NovaQuoteAgent/1.0)',
+            },
           });
 
           if (response.data && Array.isArray(response.data)) {
             allNews = [...allNews, ...response.data];
-            console.log(`[FinnhubNewsScraper] Fetched ${response.data.length} items from ${category} category`);
+            console.log(
+              `[FinnhubNewsScraper] Fetched ${response.data.length} items from ${category} category`
+            );
           }
         } catch (categoryError) {
-          console.warn(`[FinnhubNewsScraper] Failed to fetch ${category}:`,
-            categoryError instanceof Error ? categoryError.message : categoryError);
+          console.warn(
+            `[FinnhubNewsScraper] Failed to fetch ${category}:`,
+            categoryError instanceof Error ? categoryError.message : categoryError
+          );
         }
       }
 
       // Dédupliquer par ID
-      const uniqueNews = Array.from(
-        new Map(allNews.map(item => [item.id, item])).values()
-      );
+      const uniqueNews = Array.from(new Map(allNews.map(item => [item.id, item])).values());
 
       // Limiter aux 50 articles les plus récents
       const limitedNews = uniqueNews.slice(0, 50);
@@ -78,10 +80,11 @@ export class FinnhubNewsScraper {
 
       console.log(`[FinnhubNewsScraper] Processed ${newsItems.length} unique news items`);
       return newsItems;
-
     } catch (error) {
-      console.error('[FinnhubNewsScraper] Error fetching news:',
-        error instanceof Error ? error.message : error);
+      console.error(
+        '[FinnhubNewsScraper] Error fetching news:',
+        error instanceof Error ? error.message : error
+      );
       return [];
     }
   }

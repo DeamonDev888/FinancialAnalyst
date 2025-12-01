@@ -8,6 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS news_items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title VARCHAR(1000) NOT NULL,
+    title_hash VARCHAR(64), -- Hash du titre pour la détection de doublons
     url VARCHAR(2048) UNIQUE NOT NULL,
     source VARCHAR(100) NOT NULL,
     content TEXT,
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS news_items (
     scraped_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     sentiment VARCHAR(20) CHECK (sentiment IN ('bullish', 'bearish', 'neutral')),
     confidence DECIMAL(3,2) CHECK (confidence >= 0 AND confidence <= 1),
+    data_quality_score DECIMAL(3,2) CHECK (data_quality_score >= 0 AND data_quality_score <= 1), -- Score de qualité des données
     keywords JSONB DEFAULT '[]',
     market_hours VARCHAR(20) CHECK (market_hours IN ('pre-market', 'market', 'after-hours', 'extended')),
     processing_status VARCHAR(20) DEFAULT 'raw' CHECK (processing_status IN ('raw', 'processed', 'analyzed')),
@@ -95,6 +97,8 @@ CREATE INDEX IF NOT EXISTS idx_news_items_keywords ON news_items USING GIN(keywo
 CREATE INDEX IF NOT EXISTS idx_news_items_processing_status ON news_items(processing_status);
 CREATE INDEX IF NOT EXISTS idx_news_items_scraped_at ON news_items(scraped_at DESC);
 CREATE INDEX IF NOT EXISTS idx_news_items_created_at ON news_items(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_news_items_title_hash ON news_items(title_hash);
+CREATE INDEX IF NOT EXISTS idx_news_items_data_quality_score ON news_items(data_quality_score);
 
 CREATE INDEX IF NOT EXISTS idx_sentiment_analyses_analysis_date ON sentiment_analyses(analysis_date DESC);
 CREATE INDEX IF NOT EXISTS idx_sentiment_analyses_overall_sentiment ON sentiment_analyses(overall_sentiment);

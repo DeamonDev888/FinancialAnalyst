@@ -55,7 +55,7 @@ async function applyVixMigration() {
       'CREATE INDEX IF NOT EXISTS idx_vix_data_created_at ON vix_data(created_at DESC)',
       'CREATE INDEX IF NOT EXISTS idx_vix_data_last_update ON vix_data(last_update DESC)',
       'CREATE INDEX IF NOT EXISTS idx_vix_analysis_created_at ON vix_analysis(created_at DESC)',
-      'CREATE INDEX IF NOT EXISTS idx_vix_analysis_data_gin ON vix_analysis USING GIN (analysis_data)'
+      'CREATE INDEX IF NOT EXISTS idx_vix_analysis_data_gin ON vix_analysis USING GIN (analysis_data)',
     ];
 
     for (const index of indexes) {
@@ -122,7 +122,6 @@ async function applyVixMigration() {
     console.log('   - Index optimisés');
     console.log('   - Vues de données créées');
     console.log('   - Données de test disponibles');
-
   } catch (error) {
     console.error('❌ Erreur lors de la migration:', error.message);
     throw error;

@@ -61,7 +61,6 @@ async function checkVixTables() {
     console.log(`\n📈 Analyses RougePulse: ${rougePulseCount} enregistrements`);
 
     console.log('\n✅ Vérification terminée');
-
   } catch (error) {
     console.error('❌ Erreur:', error.message);
   } finally {

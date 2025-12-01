@@ -22,7 +22,9 @@ async function checkVixData() {
 
     if (marketDataQuery.rows.length > 0) {
       marketDataQuery.rows.forEach((row, index) => {
-        console.log(`   [${index + 1}] ${new Date(row.timestamp).toLocaleString('fr-FR')} - ${row.source}: ${row.price || 'NULL'} | ${row.asset_type || 'N/A'}`);
+        console.log(
+          `   [${index + 1}] ${new Date(row.timestamp).toLocaleString('fr-FR')} - ${row.source}: ${row.price || 'NULL'} | ${row.asset_type || 'N/A'}`
+        );
       });
     }
 
@@ -35,12 +37,13 @@ async function checkVixData() {
 
     if (newsQuery.rows.length > 0) {
       newsQuery.rows.forEach((row, index) => {
-        console.log(`   [${index + 1}] ${new Date(row.published_at).toLocaleString('fr-FR')} - ${row.source}: ${row.title.substring(0, 60)}...`);
+        console.log(
+          `   [${index + 1}] ${new Date(row.published_at).toLocaleString('fr-FR')} - ${row.source}: ${row.title.substring(0, 60)}...`
+        );
       });
     }
 
     console.log('✅ Vérification terminée avec succès');
-
   } catch (error) {
     console.error('❌ Erreur lors de la vérification:', error);
   } finally {
